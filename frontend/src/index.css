@@ -1,32 +1,61 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-coffee-100: #f5e6d3;
+  --color-coffee-200: #e8c9a0;
+  --color-coffee-500: #8B4513;
+  --color-coffee-700: #5C2E00;
+  --color-coffee-900: #2C1500;
+}
 
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 font-sans;
+    background-color: #f9fafb;
+    color: #111827;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-coffee-500 hover:bg-coffee-700 text-white font-medium
-           px-4 py-2 rounded-lg transition-colors duration-200;
+    background-color: var(--color-coffee-500);
+    color: white;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s;
   }
-  .btn-secondary {
-    @apply bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium
-           px-4 py-2 rounded-lg transition-colors duration-200;
+  .btn-primary:hover {
+    background-color: var(--color-coffee-700);
   }
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    border: 1px solid #f3f4f6;
+    padding: 1.5rem;
   }
   .badge-compliant {
-    @apply bg-green-100 text-green-700 text-xs font-medium px-2.5 py-0.5 rounded-full;
+    background-color: #dcfce7;
+    color: #15803d;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
   }
   .badge-alert {
-    @apply bg-amber-100 text-amber-700 text-xs font-medium px-2.5 py-0.5 rounded-full;
+    background-color: #fef3c7;
+    color: #b45309;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
   }
   .badge-expired {
-    @apply bg-red-100 text-red-700 text-xs font-medium px-2.5 py-0.5 rounded-full;
+    background-color: #fee2e2;
+    color: #b91c1c;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
   }
 }
