@@ -1,0 +1,188 @@
+services:
+
+  # ── Brésil ────────────────────────────────────────────────
+  api-bresil:
+    build: ./backend-pays
+    ports: ["8001:8000"]
+    environment:
+      PAYS: bresil
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: futurekawa
+      DATABASE_URL: postgresql://postgres:changeme@db-bresil:5432/futurekawa
+      MQTT_BROKER: mqtt-bresil
+      MQTT_PORT: 1883
+      MQTT_TOPIC_PREFIX: futurekawa/bresil
+      SEUIL_TEMP: 29
+      SEUIL_HUMIDITE: 55
+      TOLERANCE_TEMP: 3
+      TOLERANCE_HUMIDITE: 2
+      SECRET_KEY: changeme-secret-key
+    depends_on:
+      db-bresil:
+        condition: service_healthy
+      mqtt-bresil:
+        condition: service_started
+    networks: [futurekawa-net]
+
+  db-bresil:
+    image: postgres:16-alpine
+    ports: ["5433:5432"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: futurekawa
+    volumes:
+      - db-bresil-data:/var/lib/postgresql/data
+      - ./backend-pays/app/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks: [futurekawa-net]
+
+  mqtt-bresil:
+    image: eclipse-mosquitto:2
+    ports: ["1884:1883"]
+    volumes:
+      - ./backend-pays/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mqtt-bresil-data:/mosquitto/data
+    networks: [futurekawa-net]
+
+  # ── Équateur ──────────────────────────────────────────────
+  api-equateur:
+    build: ./backend-pays
+    ports: ["8002:8000"]
+    environment:
+      PAYS: equateur
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: futurekawa
+      DATABASE_URL: postgresql://postgres:changeme@db-equateur:5432/futurekawa
+      MQTT_BROKER: mqtt-equateur
+      MQTT_PORT: 1883
+      MQTT_TOPIC_PREFIX: futurekawa/equateur
+      SEUIL_TEMP: 31
+      SEUIL_HUMIDITE: 60
+      TOLERANCE_TEMP: 3
+      TOLERANCE_HUMIDITE: 2
+      SECRET_KEY: changeme-secret-key
+    depends_on:
+      db-equateur:
+        condition: service_healthy
+      mqtt-equateur:
+        condition: service_started
+    networks: [futurekawa-net]
+
+  db-equateur:
+    image: postgres:16-alpine
+    ports: ["5434:5432"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: futurekawa
+    volumes:
+      - db-equateur-data:/var/lib/postgresql/data
+      - ./backend-pays/app/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks: [futurekawa-net]
+
+  mqtt-equateur:
+    image: eclipse-mosquitto:2
+    ports: ["1885:1883"]
+    volumes:
+      - ./backend-pays/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mqtt-equateur-data:/mosquitto/data
+    networks: [futurekawa-net]
+
+  # ── Colombie ──────────────────────────────────────────────
+  api-colombie:
+    build: ./backend-pays
+    ports: ["8003:8000"]
+    environment:
+      PAYS: colombie
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: futurekawa
+      DATABASE_URL: postgresql://postgres:changeme@db-colombie:5432/futurekawa
+      MQTT_BROKER: mqtt-colombie
+      MQTT_PORT: 1883
+      MQTT_TOPIC_PREFIX: futurekawa/colombie
+      SEUIL_TEMP: 26
+      SEUIL_HUMIDITE: 80
+      TOLERANCE_TEMP: 3
+      TOLERANCE_HUMIDITE: 2
+      SECRET_KEY: changeme-secret-key
+    depends_on:
+      db-colombie:
+        condition: service_healthy
+      mqtt-colombie:
+        condition: service_started
+    networks: [futurekawa-net]
+
+  db-colombie:
+    image: postgres:16-alpine
+    ports: ["5435:5432"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: futurekawa
+    volumes:
+      - db-colombie-data:/var/lib/postgresql/data
+      - ./backend-pays/app/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks: [futurekawa-net]
+
+  mqtt-colombie:
+    image: eclipse-mosquitto:2
+    ports: ["1886:1883"]
+    volumes:
+      - ./backend-pays/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mqtt-colombie-data:/mosquitto/data
+    networks: [futurekawa-net]
+
+  # ── Siège ─────────────────────────────────────────────────
+  backend-siege:
+    build: ./backend-siege
+    ports: ["8000:8000"]
+    environment:
+      API_BRESIL: http://api-bresil:8000
+      API_EQUATEUR: http://api-equateur:8000
+      API_COLOMBIE: http://api-colombie:8000
+      SECRET_KEY: changeme-secret-key
+    depends_on:
+      - api-bresil
+      - api-equateur
+      - api-colombie
+    networks: [futurekawa-net]
+
+  # ── Frontend ──────────────────────────────────────────────
+  frontend:
+    build: ./frontend
+    ports: ["3000:3000"]
+    environment:
+      VITE_API_URL: http://localhost:8000
+    depends_on:
+      - backend-siege
+    networks: [futurekawa-net]
+
+volumes:
+  db-bresil-data:
+  db-equateur-data:
+  db-colombie-data:
+  mqtt-bresil-data:
+  mqtt-equateur-data:
+  mqtt-colombie-data:
+
+networks:
+  futurekawa-net:
+    driver: bridge
