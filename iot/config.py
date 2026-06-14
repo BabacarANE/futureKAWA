@@ -1,0 +1,21 @@
+# WiFi
+WIFI_SSID = "TON_WIFI"
+WIFI_PASSWORD = "TON_MOT_DE_PASSE"
+
+# MQTT
+MQTT_BROKER = "10.200.9.147"
+MQTT_PORT = 1884
+MQTT_CLIENT_ID = "esp8266-bresil"
+MQTT_TOPIC = b"futurekawa/bresil/sensors"
+
+# Capteur
+DHT_PIN = 4
+INTERVAL = 30
+
+# LEDs et buzzer
+LED_GREEN_PIN = 5
+LED_RED_PIN = 2
+BUZZER_PIN = 14
+
+# Entrepôt
+WAREHOUSE_ID = 1
