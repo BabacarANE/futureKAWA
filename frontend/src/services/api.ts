@@ -67,3 +67,37 @@ export const getCountryAlerts = async (code: string): Promise<Alert[]> => {
 }
 
 export default api
+
+export const createLot = async (
+  countryCode: string,
+  payload: {
+    id: string
+    exploitation_id: number
+    warehouse_id: number
+    quality_notes?: string
+  }
+): Promise<Lot> => {
+  const { data } = await api.post(`/consolidated/${countryCode}/lots`, payload)
+  return data
+}
+
+export const createLotsBatch = async (
+  countryCode: string,
+  lots: {
+    id: string
+    exploitation_id: number
+    warehouse_id: number
+    quality_notes?: string
+  }[]
+): Promise<{ created: number; errors: string[] }> => {
+  const results = await Promise.allSettled(
+    lots.map(lot => createLot(countryCode, lot))
+  )
+  const errors: string[] = []
+  let created = 0
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') created++
+    else errors.push(`Lot ${lots[i].id} : ${r.reason?.response?.data?.detail ?? 'erreur'}`)
+  })
+  return { created, errors }
+}

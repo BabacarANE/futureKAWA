@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel
 from typing import Optional
 import asyncio
+import httpx
 import app.clients.bresil as bresil
 import app.clients.equateur as equateur
 import app.clients.colombie as colombie
@@ -14,6 +16,18 @@ CLIENTS = {
     "EC": equateur,
     "CO": colombie,
 }
+
+COUNTRY_URLS = {
+    "BR": "http://api-bresil:8000",
+    "EC": "http://api-equateur:8000",
+    "CO": "http://api-colombie:8000",
+}
+
+class LotCreate(BaseModel):
+    id: str
+    exploitation_id: int
+    warehouse_id: int
+    quality_notes: Optional[str] = None
 
 @router.get("/")
 async def get_all(token: str = Depends(oauth2_scheme)):
@@ -44,9 +58,35 @@ async def get_lots(
 ):
     client = CLIENTS.get(country_code.upper())
     if not client:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Country not found")
     return await client.get_lots(token) or []
+
+@router.post("/{country_code}/lots")
+async def create_lot(
+    country_code: str,
+    payload: LotCreate,
+    token: str = Depends(oauth2_scheme)
+):
+    base_url = COUNTRY_URLS.get(country_code.upper())
+    if not base_url:
+        raise HTTPException(status_code=404, detail="Country not found")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            res = await client.post(
+                f"{base_url}/lots/",
+                json=payload.model_dump(),
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            if res.status_code in (200, 201):
+                return res.json()
+            raise HTTPException(
+                status_code=res.status_code,
+                detail=res.json().get("detail", "Error creating lot")
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Country API unreachable: {e}")
 
 @router.get("/{country_code}/measures")
 async def get_measures(
@@ -56,7 +96,6 @@ async def get_measures(
 ):
     client = CLIENTS.get(country_code.upper())
     if not client:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Country not found")
     return await client.get_measures(token, warehouse_id) or []
 
@@ -67,7 +106,6 @@ async def get_alerts(
 ):
     client = CLIENTS.get(country_code.upper())
     if not client:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Country not found")
     return await client.get_alerts(token) or []
 
