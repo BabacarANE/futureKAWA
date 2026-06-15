@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import LotPage from './pages/LotPage'
+import AdminUserPage from './pages/AdminUserPage'
 import Layout from './components/Layout'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -23,6 +24,13 @@ function AppRoutes() {
         <PrivateRoute>
           <Layout>
             <DashboardPage />
+          </Layout>
+        </PrivateRoute>
+      } />
+      <Route path="/admin/users" element={
+        <PrivateRoute>
+          <Layout>
+            <AdminUserPage />
           </Layout>
         </PrivateRoute>
       } />

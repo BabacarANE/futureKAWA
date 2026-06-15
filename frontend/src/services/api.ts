@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { Lot, Measure, Alert, AuthToken, ConsolidatedCountry } from '../types'
+import type { Lot, Measure, Alert, AuthToken, ConsolidatedCountry, Country, User } from '../types'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
@@ -38,6 +38,54 @@ export const login = async (email: string, password: string): Promise<AuthToken>
 export const getMe = async () => {
   const { data } = await api.get('/auth/me')
   return data
+}
+
+export const getRoles = async (): Promise<string[]> => {
+  const { data } = await api.get('/auth/roles')
+  return data.roles
+}
+
+export const getCountries = async (): Promise<Country[]> => {
+  const { data } = await api.get('/auth/countries')
+  return data
+}
+
+export const getUsers = async (): Promise<User[]> => {
+  const { data } = await api.get('/auth/users')
+  return data
+}
+
+export const createUser = async (payload: {
+  name: string
+  email: string
+  password: string
+  role: string
+  country_code: string | null
+}) => {
+  const { data } = await api.post('/auth/users', payload)
+  return data
+}
+
+export const updateUser = async (
+  userId: number,
+  payload: {
+    name?: string
+    email?: string
+    password?: string
+    role?: string
+    country_code?: string | null
+  }
+) => {
+  const { data } = await api.put(`/auth/users/${userId}`, payload)
+  return data
+}
+
+export const deleteUser = async (userId: number, countryCode?: string | null) => {
+  await api.delete(`/auth/users/${userId}`, {
+    params: {
+      country_code: countryCode || undefined,
+    },
+  })
 }
 
 // ── Consolidated (siège) ──────────────────────────

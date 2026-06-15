@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import CountrySelector from '../components/CountrySelector'
 import LotsTable from '../components/LotsTable'
 import AlertsBanner from '../components/AlertsBanner'
@@ -9,6 +10,7 @@ import type { Lot, Alert } from '../types'
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const navigate = useNavigate()
   const [country, setCountry] = useState('BR')
   const [lots, setLots] = useState<Lot[]>([])
   const [alerts, setAlerts] = useState<Alert[]>([])
@@ -46,6 +48,14 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-4">
           <CountrySelector selected={country} onChange={setCountry} />
+          <button
+            onClick={() => navigate('/admin/users')}
+            className="flex items-center gap-2 bg-coffee-700 hover:bg-coffee-500
+                       text-white text-sm font-medium px-4 py-2 rounded-xl
+                       transition-colors shadow-sm"
+          >
+            Gestion rôle
+          </button>
           {canCreateLot && (
             <button
               onClick={() => setShowModal(true)}

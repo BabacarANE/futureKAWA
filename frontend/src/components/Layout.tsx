@@ -24,6 +24,14 @@ export default function Layout({ children }: { children: ReactNode }) {
               {user?.name} —
               <span className="ml-1 text-coffee-100 font-medium">{user?.role}</span>
             </span>
+            {user?.role === 'siege' && (
+              <button
+                onClick={() => navigate('/admin/users')}
+                className="text-sm bg-coffee-700 hover:bg-coffee-500 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Admin utilisateurs
+              </button>
+            )}
             <button
               onClick={handleLogout}
               className="text-sm bg-coffee-700 hover:bg-coffee-500 px-3 py-1.5 rounded-lg transition-colors"
