@@ -1,4 +1,5 @@
-import { useState, FormEvent, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import type { FormEvent } from 'react'
 import { createLot, createLotsBatch } from '../services/api'
 
 interface Props {
@@ -23,6 +24,8 @@ type Tab = 'manual' | 'csv'
 
 export default function NewLotModal({ countryCode, onClose, onCreated }: Props) {
   const [tab, setTab] = useState<Tab>('manual')
+
+  const inputRef = useRef<HTMLInputElement | null>(null)
 
   // ── Manuel ──
   const [id, setId] = useState('')
@@ -90,6 +93,16 @@ export default function NewLotModal({ countryCode, onClose, onCreated }: Props) 
     reader.readAsText(file, 'UTF-8')
   }
 
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    // focus first input on open
+    setTimeout(() => inputRef.current?.focus(), 50)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   // ── Submit Manuel ──
   const handleManualSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -128,8 +141,11 @@ export default function NewLotModal({ countryCode, onClose, onCreated }: Props) 
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg mx-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={onClose}>
+       <div role="dialog" aria-modal="true" aria-label="Nouveau lot"
+         onClick={(e) => e.stopPropagation()}
+         className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-lg mx-4 modal-enter-active">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
@@ -171,6 +187,7 @@ export default function NewLotModal({ countryCode, onClose, onCreated }: Props) 
               </label>
               <input
                 type="text"
+                ref={inputRef}
                 value={id}
                 onChange={e => setId(e.target.value.toUpperCase())}
                 placeholder={`${countryCode}-2026-001`}

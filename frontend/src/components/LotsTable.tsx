@@ -4,6 +4,7 @@ import type { Lot } from '../types'
 interface Props {
   lots: Lot[]
   countryCode: string
+  onRowClick?: (lot: Lot) => void
 }
 
 const statusConfig = {
@@ -18,7 +19,7 @@ function daysInStorage(date: string): number {
   )
 }
 
-export default function LotsTable({ lots, countryCode }: Props) {
+export default function LotsTable({ lots, countryCode, onRowClick }: Props) {
   const navigate = useNavigate()
 
   if (!lots.length) return (
@@ -47,8 +48,12 @@ export default function LotsTable({ lots, countryCode }: Props) {
             return (
               <tr
                 key={lot.id}
-                className={`border-b border-gray-50 hover:bg-gray-50 transition-colors
+                className={`border-b border-gray-50 hover:bg-gray-50 transition-colors clickable-row
                             ${i === 0 ? 'bg-amber-50/40' : ''}`}
+                onClick={() => onRowClick ? onRowClick(lot) : navigate(`/lots/${lot.id}?country=${countryCode}`)}
+                onKeyDown={(e) => { if (e.key === 'Enter') (onRowClick ? onRowClick(lot) : navigate(`/lots/${lot.id}?country=${countryCode}`)) }}
+                role="button"
+                tabIndex={0}
               >
                 <td className="py-3 px-4 font-mono font-medium text-coffee-700">
                   {lot.id}

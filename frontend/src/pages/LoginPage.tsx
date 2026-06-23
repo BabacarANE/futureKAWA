@@ -1,4 +1,5 @@
-import { useState, FormEvent } from 'react'
+import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
@@ -28,8 +29,8 @@ export default function LoginPage() {
     <div className="min-h-screen bg-coffee-900 flex items-center justify-center px-4">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <span className="text-5xl">☕</span>
-          <h1 className="text-2xl font-bold text-coffee-900 mt-3">FutureKawa</h1>
+          <img src="/futurekawa-logo-icon.svg" alt="FutureKawa" className="h-20 w-20 mx-auto object-contain" />
+          <h1 className="text-2xl font-bold text-coffee-900 mt-4">FutureKawa</h1>
           <p className="text-gray-500 text-sm mt-1">Système de suivi des stocks</p>
         </div>
 

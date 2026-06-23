@@ -101,3 +101,15 @@ export const createLotsBatch = async (
   })
   return { created, errors }
 }
+
+export const createWarehouse = async (payload: {
+  id: string
+  country: string
+  capacity?: number
+  temp?: number
+  humidity?: number
+  photo?: string
+}) => {
+  const { data } = await api.post('/warehouses', payload)
+  return data
+}
