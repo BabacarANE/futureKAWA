@@ -1,16 +1,35 @@
-import React from 'react'
+import type { ReactNode } from 'react'
 
-export default function KpiCard({ title, value, delta, icon, className = '' }: { title: string; value: React.ReactNode; delta?: string; icon?: React.ReactNode; className?: string }) {
+interface KpiCardProps {
+  title: string
+  value: ReactNode
+  icon?: ReactNode
+  trend?: { value: number; positive?: boolean }
+}
+
+export default function KpiCard({ title, value, icon, trend }: KpiCardProps) {
   return (
-    <div className={`bg-white rounded-2xl shadow-sm p-4 transform transition-transform hover:-translate-y-1 ${className}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs text-gray-500">{title}</p>
-          <p className="text-2xl font-semibold text-gray-900 mt-1">{value}</p>
-        </div>
-        {icon && <div className="text-coffee-700">{icon}</div>}
+    <div
+      className="bg-white dark:bg-coffee-900 border border-coffee-900/8 dark:border-white/8
+                 rounded-2xl p-4 shadow-card dark:shadow-card-dark
+                 hover:border-coffee-300/40 dark:hover:border-coffee-300/20 transition-colors"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-xs font-medium text-coffee-700/60 dark:text-coffee-200/50 leading-snug">
+          {title}
+        </span>
+        {icon && (
+          <span className="text-coffee-400 dark:text-coffee-300/70 shrink-0">{icon}</span>
+        )}
       </div>
-      {delta && <div className="mt-3 text-sm text-green-600">{delta}</div>}
+      <div className="mt-2 font-semibold text-coffee-900 dark:text-coffee-50">
+        {value}
+      </div>
+      {trend && (
+        <div className={`mt-1 text-xs font-medium ${trend.positive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          {trend.positive ? '↑' : '↓'} {Math.abs(trend.value)}%
+        </div>
+      )}
     </div>
   )
 }

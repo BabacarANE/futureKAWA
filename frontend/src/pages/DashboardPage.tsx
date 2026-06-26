@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { Search, Plus, Thermometer, Droplets, Package, Warehouse, AlertTriangle, Clock4 } from 'lucide-react'
 import CountrySelector from '../components/CountrySelector'
 import LotsTable from '../components/LotsTable'
 import NewLotModal from '../components/NewLotModal'
@@ -11,6 +12,18 @@ import MiniChart from '../components/ui/MiniChart'
 import CountryIndicator from '../components/ui/CountryIndicator'
 import CriticalAlerts from '../components/ui/CriticalAlerts'
 import ActivityTimeline from '../components/ui/ActivityTimeline'
+import UserMenu from '../components/ui/UserMenu'
+import NotificationsMenu from '../components/ui/NotificationsMenu'
+import ThemeToggle from '../components/ui/ThemeToggle'
+import LineChartCard from '../components/ui/LineChartCard'
+import StockBarChart from '../components/ui/StockBarChart'
+import AlertsPieChart from '../components/ui/AlertsPieChart'
+
+const COUNTRY_META: Record<string, { label: string; color: string }> = {
+  BR: { label: 'Brésil', color: '#D9A15E' },
+  CO: { label: 'Colombie', color: '#FF9800' },
+  EC: { label: 'Equateur', color: '#EF4444' },
+}
 
 export default function DashboardPage() {
   const { user } = useAuth()
@@ -22,7 +35,6 @@ export default function DashboardPage() {
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
-  const [dark, setDark] = useState(false)
 
   const canCreateLot = user?.role === 'responsable_exploitation' || user?.role === 'responsable_entrepot'
 
@@ -42,121 +54,164 @@ export default function DashboardPage() {
   useEffect(() => { fetchData() }, [fetchData])
 
   useEffect(() => {
-    // keep URL in sync with selected country
     if (country) setSearchParams({ country })
   }, [country, setSearchParams])
 
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', dark)
-  }, [dark])
+  const filteredLots = useMemo(() => {
+    if (!query.trim()) return lots
+    const q = query.toLowerCase()
+    return lots.filter(l =>
+      String((l as any).reference ?? l.id).toLowerCase().includes(q) ||
+      String(l.warehouse_id).toLowerCase().includes(q)
+    )
+  }, [lots, query])
 
   const totalLots = lots.length
   const activeWarehouses = Array.from(new Set(lots.map(l => l.warehouse_id))).length
   const alertsCount = alerts.length
-  const tempAvg = 24.3
-  const humidityAvg = 56
   const expiringSoon = lots.filter(l => {
     const e = (l as any).expiry_date || (l as any).expiry || null
     if (!e) return false
-    const days = Math.floor((new Date(e).getTime() - Date.now())/(1000*60*60*24))
+    const days = Math.floor((new Date(e).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     return days >= 0 && days <= 14
   }).length
 
-  // dummy chart data
-  const tempSeries = [22,23,24,25,24,26,25,24,23,24]
-  const humSeries = [55,56,54,58,57,56,55,54,53,55]
+  // Séries vides par défaut — branchera sur l'API température/humidité réelle quand elle existera
+  const tempSeries: { label: string; value: number }[] = []
+  const humSeries: { label: string; value: number }[] = []
+
+  const stockByCountry = Object.entries(COUNTRY_META).map(([code, meta]) => ({
+    code,
+    label: meta.label,
+    color: meta.color,
+    value: lots.filter(l => (l as any).country_code === code).length,
+  }))
+
+  const alertsByLevel = [
+    { name: 'Critique', value: alerts.filter(a => (a as any).level === 'critical').length, color: '#EF4444' },
+    { name: 'Avertissement', value: alerts.filter(a => (a as any).level === 'warning').length, color: '#F59E0B' },
+    { name: 'Info', value: alerts.filter(a => (a as any).level === 'info').length, color: '#7A4528' },
+  ]
+
+  const criticalAlerts = alerts
+    .filter(a => (a as any).level === 'critical')
+    .map(a => ({ id: String(a.id), message: String((a as any).message ?? 'Alerte') }))
 
   return (
-    <div className={`space-y-6 p-6`}> 
-      {/* Header */}
-      <header className="flex items-center justify-between">
+    <div className="min-h-screen bg-[#FAF7F2] dark:bg-coffee-950 transition-colors">
+      <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
+        {/* Header */}
+        <header className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3">
+            <CountrySelector selected={country} onChange={setCountry} />
 
-        <div className="flex items-center gap-3">
-          <CountrySelector selected={country} onChange={setCountry} />
-          <div className="relative">
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher lots, entrepôts..."
-              className="pl-9 pr-3 py-2 rounded-xl bg-white border border-gray-200 w-80 text-sm" />
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
-          </div>
-          <button className="p-2 rounded-lg bg-white border border-gray-100">🔔</button>
-          <button onClick={() => setDark(d => !d)} className="p-2 rounded-lg bg-white border border-gray-100">🌙</button>
-          <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-gray-100">
-            <div className="w-8 h-8 rounded-full bg-coffee-700 text-white flex items-center justify-center">JD</div>
-            <div className="text-sm">
-              <div className="font-medium">{user?.name ?? 'Admin'}</div>
-              <div className="text-xs text-gray-500">{user?.role ?? 'siege'}</div>
+            <div className="relative">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Rechercher lots, entrepôts..."
+                className="pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-coffee-900/40 border border-coffee-900/10 dark:border-white/10
+                           w-72 sm:w-80 text-sm text-coffee-900 dark:text-coffee-50 placeholder:text-coffee-700/40 dark:placeholder:text-coffee-200/30
+                           focus:outline-none focus:ring-2 focus:ring-coffee-300 transition-colors"
+              />
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-coffee-700/40 dark:text-coffee-200/35" />
             </div>
-          </div>
-          {canCreateLot && (
-            <button onClick={() => setShowModal(true)} className="ml-2 bg-coffee-700 text-white px-3 py-2 rounded-lg">Nouveau lot</button>
-          )}
-          {loading && <div className="ml-2 animate-spin rounded-full h-5 w-5 border-b-2 border-coffee-500" />}
-        </div>
-      </header>
 
-      {/* KPI grid */}
-      <section className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <KpiCard title="Nombre total de lots" value={<span className="text-2xl">{totalLots}</span>} />
-        <KpiCard title="Entrepôts actifs" value={<span>{activeWarehouses}</span>} />
-        <KpiCard title="Alertes en cours" value={<span className="text-amber-600">{alertsCount}</span>} />
-        <KpiCard title="Température moyenne" value={<><span className="text-2xl">{tempAvg}°C</span><MiniChart data={tempSeries} color="#1F8A4D" /></>} />
-        <KpiCard title="Humidité moyenne" value={<><span className="text-2xl">{humidityAvg}%</span><MiniChart data={humSeries} color="#1F8A4D" /></>} />
-        <KpiCard title="Lots expirant bientôt" value={<span className="text-red-600">{expiringSoon}</span>} />
-      </section>
-
-      {/* Main grid: left charts + right panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold">Evolution température</h3>
-              <div className="text-sm text-gray-500">Derniers 30 jours</div>
-            </div>
-            <div className="h-48 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400">[Graph Température - placeholder]</div>
+            {loading && (
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-coffee-300 border-t-coffee-700" />
+            )}
           </div>
 
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold">Evolution humidité</h3>
-              <div className="text-sm text-gray-500">Derniers 30 jours</div>
-            </div>
-            <div className="h-48 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400">[Graph Humidité - placeholder]</div>
+          {/* Zone utilisateur — ancrée à droite */}
+          <div className="flex items-center gap-2 ml-auto">
+            {canCreateLot && (
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center gap-1.5 bg-coffee-700 hover:bg-coffee-600 text-white px-3.5 py-2 rounded-xl text-sm font-medium transition-colors"
+              >
+                <Plus size={15} />
+                Nouveau lot
+              </button>
+            )}
+            <NotificationsMenu alerts={alerts} />
+            <ThemeToggle />
+            <UserMenu />
           </div>
+        </header>
 
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="text-lg font-semibold mb-3">Stocks par pays</h3>
-            <div className="flex gap-4 items-center">
-              <div className="flex-1 h-48 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400">[Chart Stocks]</div>
-              <div className="w-48 space-y-2">
-                <CountryIndicator code="BR" label="Brésil" color="#1F8A4D" />
-                <CountryIndicator code="CO" label="Colombie" color="#FF9800" />
-                <CountryIndicator code="EC" label="Equateur" color="#EF4444" />
+        {/* KPI grid */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          <KpiCard title="Nombre total de lots" value={<span className="text-2xl">{totalLots}</span>} icon={<Package size={16} />} />
+          <KpiCard title="Entrepôts actifs" value={<span className="text-2xl">{activeWarehouses}</span>} icon={<Warehouse size={16} />} />
+          <KpiCard title="Alertes en cours" value={<span className="text-2xl text-amber-600 dark:text-amber-400">{alertsCount}</span>} icon={<AlertTriangle size={16} />} />
+          <KpiCard
+            title="Température moyenne"
+            icon={<Thermometer size={16} />}
+            value={
+              tempSeries.length > 0 ? (
+                <>
+                  <span className="text-2xl">{tempSeries[tempSeries.length - 1].value}°C</span>
+                  <MiniChart data={tempSeries.map(d => d.value)} color="#1F8A4D" />
+                </>
+              ) : (
+                <span className="text-sm text-coffee-700/40 dark:text-coffee-200/35">Pas de capteur connecté</span>
+              )
+            }
+          />
+          <KpiCard
+            title="Humidité moyenne"
+            icon={<Droplets size={16} />}
+            value={
+              humSeries.length > 0 ? (
+                <>
+                  <span className="text-2xl">{humSeries[humSeries.length - 1].value}%</span>
+                  <MiniChart data={humSeries.map(d => d.value)} color="#1F8A4D" />
+                </>
+              ) : (
+                <span className="text-sm text-coffee-700/40 dark:text-coffee-200/35">Pas de capteur connecté</span>
+              )
+            }
+          />
+          <KpiCard title="Lots expirant bientôt" value={<span className="text-2xl text-red-600 dark:text-red-400">{expiringSoon}</span>} icon={<Clock4 size={16} />} />
+        </section>
+
+        {/* Main grid: left charts + right panels */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 space-y-4">
+            <LineChartCard title="Evolution température" subtitle="Derniers 30 jours" data={tempSeries} color="#1F8A4D" unit="°C" />
+            <LineChartCard title="Evolution humidité" subtitle="Derniers 30 jours" data={humSeries} color="#3B82F6" unit="%" />
+
+            <div className="bg-white dark:bg-coffee-900 border border-coffee-900/8 dark:border-white/8 rounded-2xl p-4 shadow-card dark:shadow-card-dark">
+              <h3 className="text-base font-semibold text-coffee-900 dark:text-coffee-50 mb-3">Stocks par pays</h3>
+              <div className="flex flex-col sm:flex-row gap-4 items-stretch">
+               
+                <div className="sm:w-48 flex flex-col gap-1 justify-center">
+                  {stockByCountry.map(c => (
+                    <CountryIndicator key={c.code} code={c.code} label={c.label} color={c.color} value={c.value} />
+                  ))}
+                </div>
               </div>
             </div>
+
+            <div className="bg-white dark:bg-coffee-900 border border-coffee-900/8 dark:border-white/8 rounded-2xl p-4 shadow-card dark:shadow-card-dark">
+              <h3 className="text-base font-semibold text-coffee-900 dark:text-coffee-50 mb-3">Répartition des alertes</h3>
+              <AlertsPieChart data={alertsByLevel} />
+            </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="text-lg font-semibold mb-3">Répartition des alertes</h3>
-            <div className="h-48 bg-gray-50 rounded-lg flex items-center justify-center text-gray-400">[Pie Chart - Alerts]</div>
-          </div>
+          <aside className="space-y-4">
+            <CriticalAlerts items={criticalAlerts} />
+
+            <div className="bg-white dark:bg-coffee-900 border border-coffee-900/8 dark:border-white/8 rounded-2xl p-4 shadow-card dark:shadow-card-dark">
+              <h3 className="text-sm font-semibold text-coffee-900 dark:text-coffee-50 mb-3">Derniers lots enregistrés</h3>
+              <LotsTable lots={filteredLots.slice(0, 5)} countryCode={country} onRowClick={() => {}} />
+            </div>
+
+            <ActivityTimeline items={[]} />
+          </aside>
         </div>
-
-        <aside className="space-y-4">
-          <CriticalAlerts items={alerts.filter(a => (a as any).level === 'critical').map(a => ({ id: String(a.id), message: String((a as any).message ?? 'Alerte') }))} />
-
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="text-sm font-semibold mb-3">Derniers lots enregistrés</h3>
-            <LotsTable lots={lots.slice(0,5)} countryCode={country} onRowClick={() => {}} />
-          </div>
-
-          <ActivityTimeline items={[{ id: '1', time: '10m', title: 'Capteur A - Température élevée', desc: 'Brésil — Entrepôt 12' }, { id: '2', time: '45m', title: 'Lot XYZ enregistré', desc: 'Colombie — Entrepôt 3' }]} />
-
-          <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <h3 className="text-sm font-semibold mb-3">Timeline</h3>
-            <div className="text-sm text-gray-500">Historique des opérations récentes</div>
-          </div>
-        </aside>
       </div>
+
       {showModal && (
         <NewLotModal countryCode={country} onClose={() => setShowModal(false)} onCreated={fetchData} />
       )}

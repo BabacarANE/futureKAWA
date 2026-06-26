@@ -1,73 +1,128 @@
-# React + TypeScript + Vite
+# FutureKawa — Coffee Intelligence Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Dashboard de gestion de stocks de café avec authentification, rôles et monitoring IoT.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Stack technique
+- **React 18** + **TypeScript**
+- **React Router v6** — routing + routes protégées
+- **Tailwind CSS** — dark mode class-based
+- **Vite** — build tool
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Installation
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm create vite@latest futurekawa -- --template react-ts
+cd futurekawa
+npm install react-router-dom
+npm install -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Copier tous les fichiers src/ dans le projet, puis :
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+---
+
+## Structure des fichiers
+
+```
+src/
+├── assets/
+│   ├── futurekawa-logo.png     # Logo coffee art
+│   └── logoBase64.ts           # Logo encodé base64 pour import TS
+├── components/
+│   ├── Auth/
+│   │   ├── AuthInput.tsx       # Input réutilisable avec show/hide password
+│   │   ├── AuthToast.tsx       # Toast notification auth
+│   │   └── ProtectedRoute.tsx  # Route guard RBAC
+│   ├── Layout/
+│   │   └── Layout.tsx          # Sidebar + topbar
+│   └── Shared/
+│       └── index.tsx           # KpiCard, Badge, Button, SearchBar, etc.
+├── context/
+│   └── AuthContext.tsx         # Auth state, login, logout, gestion users
+├── hooks/
+│   └── useTheme.ts             # Dark/light mode toggle
+├── pages/
+│   ├── Auth/
+│   │   ├── LoginPage.tsx       # Page de connexion principale
+│   │   ├── RegisterPage.tsx    # Inscription (statut pending)
+│   │   ├── ForgotPasswordPage.tsx
+│   │   └── UnauthorizedPage.tsx
+│   ├── DashboardPage.tsx
+│   ├── CountriesPage.tsx
+│   ├── WarehousesPage.tsx
+│   ├── LotsPage.tsx
+│   ├── IoTPage.tsx
+│   ├── AlertsPage.tsx
+│   ├── AnalyticsPage.tsx
+│   └── AdminPage.tsx           # Gestion utilisateurs (admin only)
+├── types/
+│   └── auth.ts                 # Types auth, rôles, statuts
+├── mockData.ts                 # Données fictives (entrepôts, lots, capteurs...)
+├── types.ts                    # Types domaine métier
+└── App.tsx                     # Router complet
+```
+
+---
+
+## Comptes de test
+
+| Email                    | Mot de passe | Rôle          | Statut  |
+|--------------------------|-------------|---------------|---------|
+| admin@futurekawa.com     | admin123    | Administrateur| Actif   |
+| marie@futurekawa.com     | marie123    | Exploitation  | Actif   |
+| carlos@futurekawa.com    | carlos123   | Entrepôt      | En attente |
+
+---
+
+## Fonctionnalités auth
+
+### Connexion
+- Email + mot de passe avec validation côté client
+- Affichage / masquage du mot de passe
+- "Se souvenir de moi" (localStorage vs sessionStorage)
+- Blocage après 5 tentatives (15 min)
+- Connexion Google (OAuth stub — brancher Firebase/Supabase)
+- Thème clair/sombre persisté
+
+### Inscription
+- Formulaire avec indicateur de force du mot de passe
+- Statut "En attente" automatique
+- Workflow de validation admin
+
+### RBAC (contrôle d'accès par rôle)
+| Rôle                     | Accès                                          |
+|--------------------------|------------------------------------------------|
+| `admin`                  | Tout + tableau admin                           |
+| `siege`                  | Tout sauf admin                                |
+| `responsable_exploitation` | Dashboard, entrepôts, lots, alertes, IoT    |
+| `responsable_entrepot`   | Dashboard, entrepôts, lots, IoT               |
+| `qualite`                | Dashboard, lots, analytics                     |
+| `supply_chain`           | Dashboard, lots, pays, analytics               |
+
+### Admin
+- Liste tous les comptes avec statuts
+- Approuver / Refuser les demandes en attente
+- Activer / Désactiver un compte
+- Modifier le rôle (inline)
+- Supprimer un compte
+- Journal des connexions et actions
+
+---
+
+## Sécurité (production)
+Remplacer le mock par :
+- **Backend** : FastAPI + JWT signé (HS256 ou RS256)
+- **Mots de passe** : bcrypt (jamais stockés en clair)
+- **Google OAuth** : Firebase Auth ou Supabase Auth
+- **Sessions** : HTTP-only cookies ou localStorage avec token rotation
+- **Rate limiting** : côté serveur (ex. slowapi)
+- **HTTPS** : obligatoire en production
