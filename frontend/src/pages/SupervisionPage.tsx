@@ -1,60 +1,63 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import AlertsGroup from '../components/Supervision/AlertsGroup'
+import { getAllCountries } from '../services/api'
 
-type Alert = {
-  id?: string | number
-  ts?: string
-  country?: string
-  warehouse?: string
-  lot?: string
-  sensor?: string
-  value?: number | string
-  threshold?: number | string
-  cause?: string
-  severity?: 'critical' | 'important' | 'info'
-  metric?: 'temp' | 'humidity' | string
+// Adapte le format backend → format attendu par AlertsGroup
+function mapAlert(a: any, countryCode: string): any {
+  const isTemp = a.type === 'out_of_range'
+  const sev = a.type === 'expired_lot' ? 'important' : 'critical'
+  return {
+    id:        a.id,
+    ts:        a.triggered_at,
+    country:   countryCode,
+    warehouse: String(a.warehouse_id),
+    lot:       a.lot_id ?? undefined,
+    sensor:    undefined,
+    value:     undefined,
+    threshold: undefined,
+    cause:     a.message,
+    severity:  sev,
+    metric:    isTemp ? 'temp' : 'other',
+  }
 }
 
 export default function SupervisionPage() {
-  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [alerts,  setAlerts]  = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error,   setError]   = useState<string | null>(null)
 
-  const fetchAlerts = () => {
-    setLoading(true)
-    fetch('/alerts')
-      .then((r) => r.ok ? r.json() : Promise.reject(r))
-      .then((data) => {
-        const arr = Array.isArray(data) ? data : data.items ?? []
-        setAlerts(arr)
-      })
-      .catch(() => {
-        setAlerts([
-          { id: 1, ts: new Date().toISOString(), country: 'BR', warehouse: 'W-001', lot: 'LOT-123', sensor: 'S-1', value: '28.4°C', threshold: '25°C', cause: 'Température critique', severity: 'critical', metric: 'temp' },
-          { id: 2, ts: new Date().toISOString(), country: 'CO', warehouse: 'W-002', lot: 'LOT-45', sensor: 'S-3', value: '82%', threshold: '75%', cause: 'Humidité élevée', severity: 'critical', metric: 'humidity' },
-          { id: 3, ts: new Date().toISOString(), country: 'EC', warehouse: 'W-003', lot: 'LOT-7', sensor: 'S-9', value: '22.1°C', threshold: '20°C', cause: 'Seuil température dépassé', severity: 'important', metric: 'temp' },
-          { id: 4, ts: new Date().toISOString(), country: 'BR', warehouse: 'W-001', lot: 'LOT-88', sensor: 'S-2', value: '68%', threshold: '70%', cause: 'Humidité basse', severity: 'important', metric: 'humidity' },
-          { id: 5, ts: new Date().toISOString(), country: 'CO', warehouse: 'W-002', lot: 'LOT-11', sensor: 'S-5', value: '3.2V', threshold: '3.5V', cause: 'Batterie faible', severity: 'info', metric: 'battery' },
-          { id: 6, ts: new Date().toISOString(), country: 'EC', warehouse: 'W-003', lot: 'LOT-99', sensor: 'S-7', value: '19.8°C', threshold: '18°C', cause: 'Alerte préventive temp.', severity: 'info', metric: 'temp' },
-        ])
-      })
-      .finally(() => setLoading(false))
-  }
+  const fetchAlerts = useCallback(async () => {
+    setLoading(true); setError(null)
+    try {
+      const countries = await getAllCountries()
+      const all: any[] = []
+      for (const c of countries) {
+        const mapped = (c.alerts ?? []).map((a: any) => mapAlert(a, c.country_code))
+        all.push(...mapped)
+      }
+      // Trier par date desc
+      all.sort((a, b) => new Date(b.ts ?? 0).getTime() - new Date(a.ts ?? 0).getTime())
+      setAlerts(all)
+    } catch {
+      setError('Impossible de charger les alertes')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-  useEffect(() => { fetchAlerts() }, [])
+  useEffect(() => { fetchAlerts() }, [fetchAlerts])
 
-  const handleResolve = (a: Alert) => {
-    setAlerts((prev) => prev.filter((x) => x.id !== a.id))
-  }
+  // Auto-refresh toutes les 30s
+  useEffect(() => {
+    const t = setInterval(fetchAlerts, 30_000)
+    return () => clearInterval(t)
+  }, [fetchAlerts])
 
-  const critical = alerts.filter((a) => a.severity === 'critical')
-  const important = alerts.filter((a) => a.severity === 'important')
-  const info = alerts.filter((a) => a.severity === 'info')
+  const handleResolve = (a: any) => setAlerts(prev => prev.filter(x => x.id !== a.id))
 
-  const statCards = [
-    { label: 'Critiques', count: critical.length, color: 'bg-rose-500' },
-    { label: 'Importantes', count: important.length, color: 'bg-amber-400' },
-    { label: 'Information', count: info.length, color: 'bg-sky-500' },
-  ]
+  const critical  = alerts.filter(a => a.severity === 'critical')
+  const important = alerts.filter(a => a.severity === 'important')
+  const info      = alerts.filter(a => a.severity === 'info')
 
   return (
     <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
@@ -62,20 +65,27 @@ export default function SupervisionPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Supervision & alertes</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Suivi en temps réel des conditions de stockage</p>
+          <p className="text-sm text-gray-500 mt-0.5">Suivi en temps réel — actualisation auto 30s</p>
         </div>
-        <button
-          onClick={fetchAlerts}
-          className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-gray-700"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
-          Actualiser
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Live
+          </div>
+          <button onClick={fetchAlerts}
+            className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg border border-gray-200 bg-white hover:bg-gray-50 transition text-gray-700">
+            ↻ Actualiser
+          </button>
+        </div>
       </div>
 
-      {/* Summary cards */}
+      {/* KPI cards */}
       <div className="grid grid-cols-3 gap-4">
-        {statCards.map(({ label, count, color }) => (
+        {[
+          { label: 'Critiques',   count: critical.length,  color: 'bg-rose-500' },
+          { label: 'Importantes', count: important.length, color: 'bg-amber-400' },
+          { label: 'Information', count: info.length,      color: 'bg-sky-500' },
+        ].map(({ label, count, color }) => (
           <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
             <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${color}`} />
             <div>
@@ -86,14 +96,35 @@ export default function SupervisionPage() {
         ))}
       </div>
 
-      {/* Columns */}
+      {/* Erreur */}
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4 text-rose-700 text-sm">
+          ⚠ {error} <button onClick={fetchAlerts} className="ml-2 underline">Réessayer</button>
+        </div>
+      )}
+
+      {/* Contenu */}
       {loading ? (
-        <div className="text-center text-sm text-gray-400 py-12">Chargement…</div>
+        <div className="grid grid-cols-3 gap-6">
+          {[1,2,3].map(i => (
+            <div key={i} className="space-y-3">
+              {[1,2].map(j => <div key={j} className="h-32 bg-gray-100 rounded-xl animate-pulse" />)}
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-3 gap-6">
-          <AlertsGroup title="Critiques" severity="critical" alerts={critical} onResolve={handleResolve} />
+          <AlertsGroup title="Critiques"   severity="critical"  alerts={critical}  onResolve={handleResolve} />
           <AlertsGroup title="Importantes" severity="important" alerts={important} onResolve={handleResolve} />
-          <AlertsGroup title="Information" severity="info" alerts={info} onResolve={handleResolve} />
+          <AlertsGroup title="Information" severity="info"      alerts={info}      onResolve={handleResolve} />
+        </div>
+      )}
+
+      {!loading && alerts.length === 0 && !error && (
+        <div className="text-center py-16 text-gray-400">
+          <div className="text-4xl mb-3">✓</div>
+          <p className="text-sm font-medium">Aucune alerte active</p>
+          <p className="text-xs mt-1">Tous les entrepôts fonctionnent normalement</p>
         </div>
       )}
     </div>

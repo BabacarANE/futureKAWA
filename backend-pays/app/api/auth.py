@@ -10,7 +10,7 @@ import os
 
 SECRET_KEY = os.getenv("SECRET_KEY", "changeme-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 heures
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/token")
 router = APIRouter()

@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS alert_users (
     PRIMARY KEY (alert_id, user_id)
 );
 
--- ─── Seed data ───────────────────────────────────────────────
+-- ─── Seed data ───────────────────────────────────────────────────────────────
 
 INSERT INTO countries (code, name, ideal_temp, ideal_humidity, tolerance_temp, tolerance_humidity)
 VALUES
@@ -94,3 +94,44 @@ VALUES
     ('Entrepot Principal EC', 'Zone A', 2),
     ('Entrepot Principal CO', 'Zone A', 3)
 ON CONFLICT DO NOTHING;
+
+-- ─── USERS (mot de passe : futurekawa2024) ───────────────────────────────────
+-- Les hashes bcrypt ci-dessous correspondent tous à "futurekawa2024"
+-- Tous les backends (BR, EC, CO) reçoivent ce même init.sql,
+-- donc tous ont le compte admin.siege + leur propre compte pays.
+
+INSERT INTO users (name, email, hashed_password, role, country_code)
+VALUES
+    -- Compte siège — accès global (se connecte depuis n'importe quel backend)
+    (
+        'Admin Siege',
+        'admin.siege@futurekawa.com',
+        '$2b$12$2YPAeNqJGKLAcW1ICkRvretEK8UYb2viMp4o5yGaJDWqcN6gaq.uu',
+        'siege',
+        NULL
+    ),
+    -- Compte Brésil
+    (
+        'Admin Bresil',
+        'admin.bresil@futurekawa.com',
+        '$2b$12$3JSNLPUPlbAOIe.mJ1BKqO.ML9cdwjN7Exq4oC1zV4pI3lVXyq9I2',
+        'responsable_exploitation',
+        'BR'
+    ),
+    -- Compte Équateur
+    (
+        'Admin Equateur',
+        'admin.equateur@futurekawa.com',
+        '$2b$12$rP/qpKDhdSU926iPF.PYDOQlHM011eQfyoRyXxoSAm4KbAToR9O.u',
+        'responsable_exploitation',
+        'EC'
+    ),
+    -- Compte Colombie
+    (
+        'Admin Colombie',
+        'admin.colombie@futurekawa.com',
+        '$2b$12$cnDVDIr8zHSTyFwcsEEHl.GnZwYqOXvrFxuNNKRHBIDYRR5uZOt.W',
+        'responsable_exploitation',
+        'CO'
+    )
+ON CONFLICT (email) DO NOTHING;
