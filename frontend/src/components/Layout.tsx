@@ -8,18 +8,19 @@ import {
 import { ChevronDown, User, AlertTriangle, Info } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { useTheme } from '../context/ThemeContext'
+import { LOGO_B64 } from '../assets/logoBase64'
 
-const navItems = [
-  { to: '/',              label: 'Dashboard',      icon: LayoutDashboard, section: 'Operations' },
-  { to: '/countries',     label: 'Countries',      icon: Globe2,          section: 'Operations' },
-  { to: '/warehouses',    label: 'Warehouses',     icon: Warehouse,       section: 'Operations' },
-  { to: '/lots',          label: 'Lots',           icon: Package,         section: 'Operations' },
-  { to: '/iot',           label: 'IoT Monitoring', icon: Activity,        section: 'Operations' },
-  { to: '/alerts',        label: 'Alerts',         icon: Bell,            section: 'Operations' },
-  { to: '/analytics',     label: 'Analytics',      icon: BarChart3,       section: 'Operations' },
-  { to: '/notifications', label: 'Notifications',  icon: Mail,            section: 'System'     },
-  { to: '/admin',         label: 'Administration', icon: ShieldCheck,     section: 'System'     },
-  { to: '/settings',      label: 'Settings',       icon: Settings,        section: 'System'     },
+const NAV_ITEMS = [
+  { to: '/',              label: 'Dashboard',      icon: LayoutDashboard, section: 'Operations', adminOnly: false },
+  { to: '/countries',     label: 'Countries',      icon: Globe2,          section: 'Operations', adminOnly: false },
+  { to: '/warehouses',    label: 'Warehouses',     icon: Warehouse,       section: 'Operations', adminOnly: false },
+  { to: '/lots',          label: 'Lots',           icon: Package,         section: 'Operations', adminOnly: false },
+  { to: '/iot',           label: 'IoT Monitoring', icon: Activity,        section: 'Operations', adminOnly: false },
+  { to: '/alerts',        label: 'Alerts',         icon: Bell,            section: 'Operations', adminOnly: false },
+  { to: '/analytics',     label: 'Analytics',      icon: BarChart3,       section: 'Operations', adminOnly: false },
+  { to: '/notifications', label: 'Notifications',  icon: Mail,            section: 'System',     adminOnly: false },
+  { to: '/admin',         label: 'Administration', icon: ShieldCheck,     section: 'System',     adminOnly: true  },
+  { to: '/settings',      label: 'Settings',       icon: Settings,        section: 'System',     adminOnly: false },
 ]
 
 function getInitials(name?: string) {
@@ -114,6 +115,7 @@ function UserDropdown() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const { open, setOpen, ref } = useDropdown()
+  const avatar = localStorage.getItem('fk_avatar')
 
   const handleLogout = () => {
     setOpen(false)
@@ -132,10 +134,13 @@ function UserDropdown() {
                    bg-white dark:bg-[#1c1a17]
                    hover:bg-stone-50 dark:hover:bg-white/5 transition-colors"
       >
-        <div className="w-8 h-8 rounded-full bg-[#4a2810] text-white
-                        flex items-center justify-center text-xs font-semibold shrink-0">
-          {getInitials(user?.name)}
-        </div>
+        {avatar
+          ? <img src={avatar} alt="avatar" className="w-8 h-8 rounded-full object-cover shrink-0" />
+          : <div className="w-8 h-8 rounded-full bg-[#4a2810] text-white
+                            flex items-center justify-center text-xs font-semibold shrink-0">
+              {getInitials(user?.name)}
+            </div>
+        }
         <div className="hidden sm:block text-left">
           <div className="text-sm font-semibold text-stone-800 dark:text-stone-100 leading-tight">
             {user?.name ?? 'Admin'}
@@ -201,7 +206,10 @@ function UserDropdown() {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false)
   const { theme, toggleTheme } = useTheme()
+  const { isAdmin } = useAuth()
   const isDark = theme === 'dark'
+
+  const visibleNavItems = NAV_ITEMS.filter(item => !item.adminOnly || isAdmin)
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -213,8 +221,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         transition-all duration-300 ease-in-out overflow-hidden
       `}>
         <div className="h-16 shrink-0 flex items-center gap-3 px-5 border-b border-white/5">
-          <img src="/futurekawa-logo-icon.svg" alt="FutureKawa"
-            className="h-9 w-9 shrink-0 object-contain" />
+          <div className="h-9 w-9 shrink-0 rounded-full bg-[#F5F0E8] flex items-center justify-center p-1.5
+                          ring-2 ring-white/10 shadow-[0_0_16px_rgba(245,240,232,.18)]">
+            <img src={LOGO_B64} alt="FutureKawa" className="w-full h-full object-contain" />
+          </div>
           {!collapsed && (
             <div className="overflow-hidden">
               <p className="font-bold text-white leading-tight tracking-tight whitespace-nowrap">
@@ -236,7 +246,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </p>
               )}
               <div className="space-y-1">
-                {navItems.filter(i => i.section === section).map(({ to, label, icon: Icon }) => (
+                {visibleNavItems.filter(i => i.section === section).map(({ to, label, icon: Icon }) => (
                   <NavLink key={to} to={to} end={to === '/'}
                     className={({ isActive }) =>
                       `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium

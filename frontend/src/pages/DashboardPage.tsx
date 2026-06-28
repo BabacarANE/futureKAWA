@@ -1,11 +1,3 @@
-/**
- * src/pages/DashboardPage.tsx
- *
- * Corrections :
- * - UserMenu / ThemeToggle / NotificationsMenu SUPPRIMÉS (maintenant dans Layout topbar)
- * - StockBarChart reçoit range + warehouse (ses vrais props), pas data[]
- * - StocksChart de Analytics utilisé à la place du StockBarChart pour les graphiques
- */
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Search, Plus, Thermometer, Droplets, Package, Warehouse, AlertTriangle, Clock4 } from 'lucide-react'
@@ -22,19 +14,32 @@ import CriticalAlerts from '../components/ui/CriticalAlerts'
 import ActivityTimeline from '../components/ui/ActivityTimeline'
 import LineChartCard from '../components/ui/LineChartCard'
 import AlertsPieChart from '../components/ui/AlertsPieChart'
-// StockBarChart attend range + warehouse, pas data[] — on utilise StocksChart d'Analytics
-import StocksChart from '../components/Analytics/StocksChart'
 
 const COUNTRY_META: Record<string, { label: string; color: string }> = {
-  BR: { label: 'Brésil',   color: '#D9A15E' },
-  CO: { label: 'Colombie', color: '#FF9800' },
-  EC: { label: 'Equateur', color: '#EF4444' },
+  BR: { label: 'Brésil',    color: '#D9A15E' },
+  CO: { label: 'Colombie',  color: '#FF9800' },
+  EC: { label: 'Équateur',  color: '#EF4444' },
+}
+
+function timeAgo(iso: string): string {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
+  if (diff < 60)   return `${diff}s`
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`
+  return `${Math.floor(diff / 86400)}j`
+}
+
+const ALERT_TYPE_LABEL: Record<string, string> = {
+  out_of_range: 'Hors plage',
+  expired_lot:  'Lot expiré',
 }
 
 export default function DashboardPage() {
   const { user } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
-  const initialCountry = searchParams.get('country') ?? 'BR'
+  const isSiege = user?.role === 'siege' || user?.role === 'admin'
+  const lockedCountry = isSiege ? null : (user?.country_code ?? 'BR')
+  const initialCountry = lockedCountry ?? searchParams.get('country') ?? 'BR'
   const [country,   setCountry]   = useState(initialCountry)
   const [lots,      setLots]      = useState<Lot[]>([])
   const [alerts,    setAlerts]    = useState<Alert[]>([])
@@ -59,47 +64,72 @@ export default function DashboardPage() {
     if (!query.trim()) return lots
     const q = query.toLowerCase()
     return lots.filter(l =>
-      String((l as any).reference ?? l.id).toLowerCase().includes(q) ||
-      String(l.warehouse_id).toLowerCase().includes(q)
+      l.id.toLowerCase().includes(q) ||
+      String(l.warehouse_id).includes(q)
     )
   }, [lots, query])
 
   const totalLots        = lots.length
   const activeWarehouses = Array.from(new Set(lots.map(l => l.warehouse_id))).length
   const alertsCount      = alerts.length
-  const expiringSoon     = lots.filter(l => {
-    const e = (l as any).expiry_date || (l as any).expiry || null
-    if (!e) return false
-    const days = Math.floor((new Date(e).getTime() - Date.now()) / 86400000)
-    return days >= 0 && days <= 14
-  }).length
+  const expiringSoon     = lots.filter(l => l.status === 'expired').length
 
+  // Pas de mesures IoT pour l'instant — séries vides
   const tempSeries: { label: string; value: number }[] = []
   const humSeries:  { label: string; value: number }[] = []
 
+  // Stocks par entrepôt (lots chargés pour le pays sélectionné)
+  const stockByWarehouse = useMemo(() => {
+    const counts: Record<number, number> = {}
+    lots.forEach(l => { counts[l.warehouse_id] = (counts[l.warehouse_id] ?? 0) + 1 })
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([id, count]) => ({ id: Number(id), count }))
+  }, [lots])
+
+  // Stocks par pays (indicateurs comparatifs sur le pays courant)
   const stockByCountry = Object.entries(COUNTRY_META).map(([code, meta]) => ({
     code, label: meta.label, color: meta.color,
-    value: lots.filter(l => (l as any).country_code === code).length,
+    value: code === country ? lots.length : 0,
   }))
 
+  // Alertes par type (champs réels : a.type)
   const alertsByLevel = [
-    { name: 'Critique',      value: alerts.filter(a => (a as any).level === 'critical').length, color: '#EF4444' },
-    { name: 'Avertissement', value: alerts.filter(a => (a as any).level === 'warning').length,  color: '#F59E0B' },
-    { name: 'Info',          value: alerts.filter(a => (a as any).level === 'info').length,     color: '#7A4528' },
+    { name: 'Hors plage',   value: alerts.filter(a => a.type === 'out_of_range').length, color: '#EF4444' },
+    { name: 'Lot expiré',   value: alerts.filter(a => a.type === 'expired_lot').length,  color: '#F59E0B' },
   ]
 
+  // Alertes critiques = hors plage (le type le plus urgent disponible)
   const criticalAlerts = alerts
-    .filter(a => (a as any).level === 'critical')
-    .map(a => ({ id: String(a.id), message: String((a as any).message ?? 'Alerte') }))
+    .filter(a => a.type === 'out_of_range')
+    .slice(0, 5)
+    .map(a => ({ id: String(a.id), message: a.message }))
+
+  // Timeline d'activité = vraies alertes triées par date
+  const timelineItems = alerts
+    .slice()
+    .sort((a, b) => new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime())
+    .slice(0, 8)
+    .map(a => ({
+      id:    String(a.id),
+      time:  timeAgo(a.triggered_at),
+      title: `${ALERT_TYPE_LABEL[a.type] ?? a.type} — Entrepôt #${a.warehouse_id}`,
+      desc:  a.message,
+    }))
 
   return (
     <div className="min-h-full bg-[#FAF7F2] dark:bg-coffee-950 transition-colors">
       <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
 
-        {/* ── Header — sélecteur pays + recherche + bouton nouveau lot ── */}
-        {/* UserMenu / ThemeToggle / NotificationsMenu → dans Layout.tsx (topbar) */}
+        {/* ── Header ── */}
         <header className="flex items-center gap-3 flex-wrap">
-          <CountrySelector selected={country} onChange={setCountry} />
+          {isSiege
+            ? <CountrySelector selected={country} onChange={setCountry} />
+            : <span className="px-3 py-1.5 rounded-xl bg-white dark:bg-coffee-900/40 border border-coffee-900/10 dark:border-white/10 text-sm font-medium text-coffee-900 dark:text-coffee-50">
+                {country === 'BR' ? '🇧🇷 Brésil' : country === 'EC' ? '🇪🇨 Équateur' : '🇨🇴 Colombie'}
+              </span>
+          }
 
           <div className="relative">
             <input
@@ -177,7 +207,7 @@ export default function DashboardPage() {
             }
           />
           <KpiCard
-            title="Lots expirant bientôt"
+            title="Lots expirés"
             value={<span className="text-2xl text-red-600 dark:text-red-400">{expiringSoon}</span>}
             icon={<Clock4 size={16} />}
           />
@@ -187,27 +217,51 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">
             <LineChartCard
-              title="Evolution température"
-              subtitle="Derniers 30 jours"
+              title="Évolution température"
+              subtitle="En attente de données IoT"
               data={tempSeries}
               color="#1F8A4D"
               unit="°C"
             />
             <LineChartCard
-              title="Evolution humidité"
-              subtitle="Derniers 30 jours"
+              title="Évolution humidité"
+              subtitle="En attente de données IoT"
               data={humSeries}
               color="#3B82F6"
               unit="%"
             />
 
-            {/* Stocks par entrepôt — StocksChart attend range + warehouse */}
+            {/* Stocks par entrepôt — données réelles */}
             <div className="bg-white dark:bg-coffee-900 border border-coffee-900/8 dark:border-white/8 rounded-2xl p-4 shadow-card dark:shadow-card-dark">
-              <h3 className="text-base font-semibold text-coffee-900 dark:text-coffee-50 mb-3">Stocks par entrepôt</h3>
-              <StocksChart range={30} warehouse="all" />
+              <h3 className="text-base font-semibold text-coffee-900 dark:text-coffee-50 mb-3">
+                Stocks par entrepôt — {COUNTRY_META[country]?.label ?? country}
+              </h3>
+              {stockByWarehouse.length === 0 ? (
+                <p className="text-sm text-coffee-700/40 dark:text-coffee-200/35">Aucun lot enregistré</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {stockByWarehouse.map(({ id, count }) => {
+                    const pct = totalLots > 0 ? Math.round(count / totalLots * 100) : 0
+                    return (
+                      <div key={id} className="flex items-center gap-3">
+                        <span className="text-xs text-coffee-700/60 dark:text-coffee-200/50 w-24 shrink-0">
+                          Entrepôt #{id}
+                        </span>
+                        <div className="flex-1 h-2 rounded-full bg-coffee-100 dark:bg-coffee-800 overflow-hidden">
+                          <div className="h-full rounded-full bg-coffee-700 dark:bg-coffee-400 transition-all"
+                               style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs text-coffee-700/80 dark:text-coffee-200/70 w-14 text-right shrink-0">
+                          {count} lot{count > 1 ? 's' : ''} ({pct}%)
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
             </div>
 
-            {/* Stocks par pays (indicateurs textuels) */}
+            {/* Stocks par pays */}
             <div className="bg-white dark:bg-coffee-900 border border-coffee-900/8 dark:border-white/8 rounded-2xl p-4 shadow-card dark:shadow-card-dark">
               <h3 className="text-base font-semibold text-coffee-900 dark:text-coffee-50 mb-3">Stocks par pays</h3>
               <div className="flex flex-col gap-2">
@@ -221,6 +275,9 @@ export default function DashboardPage() {
                   />
                 ))}
               </div>
+              <p className="text-xs text-coffee-700/30 dark:text-coffee-200/25 mt-2">
+                Changez le pays via le sélecteur pour comparer
+              </p>
             </div>
 
             <div className="bg-white dark:bg-coffee-900 border border-coffee-900/8 dark:border-white/8 rounded-2xl p-4 shadow-card dark:shadow-card-dark">
@@ -241,12 +298,7 @@ export default function DashboardPage() {
               />
             </div>
 
-            <ActivityTimeline
-              items={[
-                { id: '1', time: '10m', title: 'Capteur A — Température élevée', desc: 'Brésil — Entrepôt 12' },
-                { id: '2', time: '45m', title: 'Lot XYZ enregistré',              desc: 'Colombie — Entrepôt 3' },
-              ]}
-            />
+            <ActivityTimeline items={timelineItems} />
           </aside>
         </div>
       </div>

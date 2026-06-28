@@ -90,7 +90,9 @@ export default function LotsPage() {
   const { user }   = useAuth()
   const navigate   = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const initialCountry = searchParams.get('country') ?? 'BR'
+  const isSiege = user?.role === 'siege' || user?.role === 'admin'
+  const lockedCountry = isSiege ? null : (user?.country_code ?? 'BR')
+  const initialCountry = lockedCountry ?? searchParams.get('country') ?? 'BR'
 
   const [country,    setCountry]    = useState(initialCountry)
   const [lots,       setLots]       = useState<Lot[]>([])
@@ -158,19 +160,25 @@ export default function LotsPage() {
           <p className="text-sm text-stone-500 dark:text-stone-400">Traçabilité FIFO des lots de café</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Sélecteur pays */}
-          <div className="flex gap-1 bg-white dark:bg-[#1c1a17] border border-stone-200 dark:border-white/10 p-1 rounded-xl">
-            {COUNTRIES.map(c => (
-              <button key={c.code} onClick={() => setCountry(c.code)}
-                className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${
-                  country === c.code
-                    ? 'bg-[#1a2e1a] text-white shadow-sm'
-                    : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
-                }`}>
-                {c.label}
-              </button>
-            ))}
-          </div>
+          {/* Sélecteur pays — masqué si l'utilisateur est lié à un seul pays */}
+          {isSiege ? (
+            <div className="flex gap-1 bg-white dark:bg-[#1c1a17] border border-stone-200 dark:border-white/10 p-1 rounded-xl">
+              {COUNTRIES.map(c => (
+                <button key={c.code} onClick={() => setCountry(c.code)}
+                  className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${
+                    country === c.code
+                      ? 'bg-[#1a2e1a] text-white shadow-sm'
+                      : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
+                  }`}>
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#1c1a17] border border-stone-200 dark:border-white/10 text-xs font-medium text-stone-700 dark:text-stone-200">
+              {COUNTRIES.find(c => c.code === country)?.label ?? country}
+            </span>
+          )}
           <button onClick={fetchLots} disabled={loading}
             className="h-9 w-9 flex items-center justify-center rounded-lg border border-stone-200 dark:border-white/10
                        bg-white dark:bg-[#1c1a17] text-stone-600 dark:text-stone-300

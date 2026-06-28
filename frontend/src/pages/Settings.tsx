@@ -109,20 +109,61 @@ function TR({ title, desc, checked, onChange }: { title: string; desc: string; c
 function ProfileSection({ onToast }: { onToast: (m: string) => void }) {
   const { user } = useAuth()
   const initials = user?.name?.split(' ').map(p => p[0]).join('').slice(0,2).toUpperCase() ?? 'A'
+  const [avatar, setAvatar] = React.useState<string | null>(() => localStorage.getItem('fk_avatar'))
+  const [displayName, setDisplayName] = React.useState(
+    localStorage.getItem('fk_display_name') ?? user?.name ?? ''
+  )
+  const fileRef = React.useRef<HTMLInputElement>(null)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 2 * 1024 * 1024) { onToast('Fichier trop lourd (max 2 MB)'); return }
+    const reader = new FileReader()
+    reader.onload = ev => {
+      const b64 = ev.target?.result as string
+      localStorage.setItem('fk_avatar', b64)
+      setAvatar(b64)
+      onToast('Photo de profil mise à jour ✓')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleSave = () => {
+    localStorage.setItem('fk_display_name', displayName)
+    onToast('Profil sauvegardé ✓')
+  }
+
   return (
     <Card title="Profil" description="Vos informations personnelles et préférences d'affichage">
       <div style={{ display:'flex', gap:16, alignItems:'center', marginBottom:20 }}>
-        <div style={{ width:64, height:64, borderRadius:'50%', background:'#F1C9A0', color:'#7A4528', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontWeight:600 }}>{initials}</div>
-        <div><GBtn>Changer la photo</GBtn><div style={{ fontSize:11, color:'#7a766f', marginTop:6 }}>JPG ou PNG, 2MB max</div></div>
+        {avatar
+          ? <img src={avatar} alt="avatar" style={{ width:64, height:64, borderRadius:'50%', objectFit:'cover', border:'2px solid #e0ddd7' }} />
+          : <div style={{ width:64, height:64, borderRadius:'50%', background:'#F1C9A0', color:'#7A4528', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontWeight:600 }}>{initials}</div>
+        }
+        <div>
+          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display:'none' }} onChange={handleFileChange} />
+          <div style={{ display:'flex', gap:8 }}>
+            <GBtn onClick={() => fileRef.current?.click()}>Changer la photo</GBtn>
+            {avatar && (
+              <GBtn danger onClick={() => { localStorage.removeItem('fk_avatar'); setAvatar(null); onToast('Photo supprimée') }}>
+                Supprimer
+              </GBtn>
+            )}
+          </div>
+          <div style={{ fontSize:11, color:'#7a766f', marginTop:6 }}>JPG, PNG ou WebP · 2 MB max</div>
+        </div>
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }}>
-        <Field label="Nom complet"><TI defaultValue={user?.name ?? 'Admin Siège'} /></Field>
-        <Field label="Adresse email"><TI defaultValue={(user as any)?.email ?? 'admin@futurekawa.com'} type="email" /></Field>
-        <Field label="Rôle"><TI defaultValue={user?.role ?? 'siege'} disabled style={{ color:'#7a766f', background:'#f4f2ef' }} /></Field>
+        <Field label="Nom complet">
+          <TI value={displayName} onChange={e => setDisplayName(e.target.value)} />
+        </Field>
+        <Field label="Adresse email"><TI defaultValue={(user as any)?.email ?? ''} type="email" disabled style={{ color:'#7a766f', background:'#f4f2ef' }} /></Field>
+        <Field label="Rôle"><TI defaultValue={user?.role ?? ''} disabled style={{ color:'#7a766f', background:'#f4f2ef' }} /></Field>
         <Field label="Fuseau horaire"><TS defaultValue="paris"><option value="paris">Europe/Paris (UTC+2)</option><option value="bogota">America/Bogota (UTC-5)</option></TS></Field>
       </div>
       <div style={{ display:'flex', justifyContent:'flex-end' }}>
-        <PBtn onClick={() => onToast('Profil sauvegardé ✓')}><Save size={13} /> Enregistrer</PBtn>
+        <PBtn onClick={handleSave}><Save size={13} /> Enregistrer</PBtn>
       </div>
     </Card>
   )

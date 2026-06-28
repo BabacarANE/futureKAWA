@@ -95,8 +95,8 @@ export default function WarehouseCard({
           <div className="text-lg font-bold text-stone-900 dark:text-stone-100 mt-0.5">{lots}</div>
         </div>
         <div className="bg-stone-50 dark:bg-white/4 rounded-xl p-3">
-          <div className="text-xs text-stone-500 dark:text-stone-400">📏 Capacité</div>
-          <div className="text-lg font-bold text-stone-900 dark:text-stone-100 mt-0.5">{capacity}</div>
+          <div className="text-xs text-stone-500 dark:text-stone-400">🏭 Exploitation</div>
+          <div className="text-lg font-bold text-stone-900 dark:text-stone-100 mt-0.5">#{capacity}</div>
         </div>
         <div className="bg-stone-50 dark:bg-white/4 rounded-xl p-3">
           <div className="text-xs text-stone-500 dark:text-stone-400">🌡 Température</div>

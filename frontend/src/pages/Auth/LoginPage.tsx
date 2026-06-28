@@ -26,16 +26,6 @@ function Bean({ top, left, size, delay, dur, rot }: typeof BEANS[0]) {
   )
 }
 
-function GoogleIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 18 18">
-      <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.616z"/>
-      <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
-      <path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/>
-      <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.167 6.656 3.58 9 3.58z"/>
-    </svg>
-  )
-}
 
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth()
@@ -105,10 +95,18 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:24 }}>
-          <img src={LOGO_B64} alt="FutureKawa" style={{ width:100, height:100, objectFit:'contain',
-            filter:'drop-shadow(0 4px 16px rgba(0,0,0,.4))' }} draggable={false} />
+          <div style={{
+            width:96, height:96, borderRadius:'50%',
+            background:'#F5F0E8',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            padding:14,
+            boxShadow:'0 0 0 6px rgba(245,240,232,.15), 0 0 40px rgba(245,240,232,.2), 0 8px 32px rgba(0,0,0,.5)',
+          }}>
+            <img src={LOGO_B64} alt="FutureKawa"
+              style={{ width:'100%', height:'100%', objectFit:'contain' }} draggable={false} />
+          </div>
           <div style={{ fontSize:11, color:'rgba(255,255,255,.5)', letterSpacing:'.12em',
-            textTransform:'uppercase', marginTop:8 }}>Coffee Intelligence</div>
+            textTransform:'uppercase', marginTop:12 }}>Coffee Intelligence</div>
         </div>
 
         {/* Carte */}
@@ -180,29 +178,6 @@ export default function LoginPage() {
             }
           </button>
 
-          {/* Séparateur */}
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
-            <div style={{ flex:1, height:1, background:'rgba(255,255,255,.15)' }} />
-            <span style={{ fontSize:11, color:'rgba(255,255,255,.4)' }}>ou</span>
-            <div style={{ flex:1, height:1, background:'rgba(255,255,255,.15)' }} />
-          </div>
-
-          {/* Google */}
-          <button type="button" className="fk-btn-soc"
-            onClick={() => window.location.href = `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/auth/google`}
-            style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', gap:8,
-              padding:'9px', borderRadius:10, border:'1px solid rgba(255,255,255,.2)',
-              background:'rgba(255,255,255,.07)', color:'#fff', fontSize:12.5,
-              cursor:'pointer', fontFamily:'inherit', transition:'background .15s', marginBottom:16 }}>
-            <GoogleIcon/> Continuer avec Google
-          </button>
-
-          <p style={{ textAlign:'center', fontSize:12, color:'rgba(255,255,255,.4)' }}>
-            Pas de compte ?{' '}
-            <Link to="/register" style={{ color:'#E3A765', textDecoration:'none', fontWeight:500 }}>
-              Créer un compte
-            </Link>
-          </p>
         </form>
 
         <div style={{ marginTop:18, textAlign:'center', fontSize:11, color:'rgba(255,255,255,.3)' }}>

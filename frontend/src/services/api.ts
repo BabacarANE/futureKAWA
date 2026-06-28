@@ -53,6 +53,34 @@ export const getMe = async () => {
   return data
 }
 
+export type ApiUser = {
+  id: number
+  name: string
+  email: string
+  role: string
+  country_code: string | null
+}
+
+export const getUsers = async (): Promise<ApiUser[]> => {
+  const { data } = await api.get<ApiUser[]>('/auth/users/')
+  return data
+}
+
+export const deleteUser = async (userId: number): Promise<void> => {
+  await api.delete(`/auth/users/${userId}`)
+}
+
+export const createUser = async (payload: {
+  name: string
+  email: string
+  password: string
+  role: string
+  country_code: string | null
+}): Promise<ApiUser> => {
+  const { data } = await api.post<ApiUser>('/auth/users/', payload)
+  return data
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // CONSOLIDATED — vue siège (tous les pays)
 // ════════════════════════════════════════════════════════════════════════════

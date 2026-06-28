@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 import httpx
 from app.config import get_settings
@@ -41,3 +41,65 @@ async def me(token: str = Depends(oauth2_scheme)):
         except Exception:
             continue
     raise HTTPException(status_code=401, detail="Invalid credentials")
+
+@router.get("/users/")
+async def list_users(token: str = Depends(oauth2_scheme)):
+    """Agrège les utilisateurs de tous les backends pays (dédupliqués par email)."""
+    all_users: list = []
+    seen: set = set()
+    for base_url in settings.get_country_urls().values():
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                res = await client.get(
+                    f"{base_url}/auth/users/",
+                    headers={"Authorization": f"Bearer {token}"}
+                )
+                if res.status_code == 200:
+                    for u in res.json():
+                        if u["email"] not in seen:
+                            seen.add(u["email"])
+                            all_users.append(u)
+        except Exception:
+            continue
+    return all_users
+
+@router.post("/users/", status_code=201)
+async def create_user(request: Request, token: str = Depends(oauth2_scheme)):
+    """Crée un utilisateur sur le backend pays correspondant (country_code) ou BR par défaut."""
+    payload = await request.json()
+    country_code = (payload.get("country_code") or "BR").upper()
+    urls = settings.get_country_urls()
+    base_url = urls.get(country_code, urls["BR"])
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            res = await client.post(
+                f"{base_url}/auth/users/",
+                json=payload,
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        if res.status_code not in (200, 201):
+            detail = res.json().get("detail", "Erreur lors de la création")
+            raise HTTPException(status_code=res.status_code, detail=detail)
+        return res.json()
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=503, detail="Backend indisponible")
+
+@router.delete("/users/{user_id}", status_code=204)
+async def delete_user(user_id: int, token: str = Depends(oauth2_scheme)):
+    """Supprime l'utilisateur sur le backend qui le contient."""
+    deleted = False
+    for base_url in settings.get_country_urls().values():
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                res = await client.delete(
+                    f"{base_url}/auth/users/{user_id}",
+                    headers={"Authorization": f"Bearer {token}"}
+                )
+                if res.status_code == 204:
+                    deleted = True
+        except Exception:
+            continue
+    if not deleted:
+        raise HTTPException(status_code=404, detail="User not found")

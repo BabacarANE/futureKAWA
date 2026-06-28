@@ -1,73 +1,129 @@
-const HOURS = ['00h', '03h', '06h', '09h', '12h', '15h', '18h', '21h']
-const WAREHOUSES_LABELS = ['W-001', 'W-002', 'W-003']
+import type { AnalyticsData } from '../../types'
+import { ANALYTICS_COUNTRIES } from '../../constants/analytics'
 
-const BASE_DATA: Record<string, number[]> = {
-  'W-001': [19.2, 19.0, 19.5, 21.8, 24.1, 25.2, 23.8, 21.5],
-  'W-002': [20.1, 19.8, 20.0, 22.5, 25.4, 26.8, 24.9, 22.3],
-  'W-003': [18.5, 18.2, 18.8, 20.5, 22.7, 23.5, 22.0, 20.1],
+type Props = { data: AnalyticsData | null; loading: boolean; country: string }
+
+const HOUR_SLOTS = [0, 3, 6, 9, 12, 15, 18, 21]
+const SLOT_LABELS = ['00h', '03h', '06h', '09h', '12h', '15h', '18h', '21h']
+
+function tempStyle(v: number | null): { bg: string; text: string } {
+  if (v === null) return { bg: '#f3f4f6', text: '#9ca3af' }
+  if (v < 18)    return { bg: '#E6F1FB', text: '#0C447C' }
+  if (v < 22)    return { bg: '#85B7EB', text: '#042C53' }
+  if (v < 25)    return { bg: '#EF9F27', text: '#412402' }
+  if (v < 28)    return { bg: '#D85A30', text: '#fff'    }
+  return               { bg: '#B53030', text: '#fff'    }
 }
 
-function tempStyle(v: number): { bg: string; text: string } {
-  if (v < 20) return { bg: '#E6F1FB', text: '#0C447C' }
-  if (v < 22) return { bg: '#85B7EB', text: '#042C53' }
-  if (v < 24) return { bg: '#EF9F27', text: '#412402' }
-  if (v < 26) return { bg: '#D85A30', text: '#fff' }
-  return { bg: '#B53030', text: '#fff' }
-}
+const COUNTRY_MAP: Record<string, string> = Object.fromEntries(
+  ANALYTICS_COUNTRIES.map(c => [c.code, c.label])
+)
 
-export default function HeatmapChart({ warehouse }: { warehouse: string }) {
-  const rows = warehouse === 'all' ? WAREHOUSES_LABELS : [warehouse]
+export default function HeatmapChart({ data, loading, country }: Props) {
+  if (loading) return (
+    <div className="bg-white dark:bg-[#1c1a17] rounded-xl border border-gray-100 dark:border-white/10 p-4">
+      <p className="text-sm font-medium text-gray-800 dark:text-stone-100 mb-3">Heatmap température</p>
+      <div className="h-28 flex items-center justify-center text-xs text-gray-300 dark:text-stone-600">
+        Chargement…
+      </div>
+    </div>
+  )
+
+  const measures = (data?.allMeasures ?? []).filter(m =>
+    country === 'all' || m.country === country
+  )
+
+  if (!measures.length) return (
+    <div className="bg-white dark:bg-[#1c1a17] rounded-xl border border-gray-100 dark:border-white/10 p-4">
+      <p className="text-sm font-medium text-gray-800 dark:text-stone-100 mb-1">Heatmap température</p>
+      <p className="text-xs text-gray-400 dark:text-stone-500 mb-4">°C moyen · par entrepôt × créneau horaire</p>
+      <div className="h-20 flex flex-col items-center justify-center gap-1">
+        <span className="text-2xl">🌡</span>
+        <span className="text-xs text-gray-400 dark:text-stone-500">En attente de données IoT</span>
+      </div>
+    </div>
+  )
+
+  // Grouper par (warehouseId, slot)
+  type Cell = { sum: number; count: number }
+  const grid: Record<string, Record<number, Cell>> = {}
+  const whCountry: Record<string, string> = {}
+
+  measures.forEach(m => {
+    const h    = new Date(m.timestamp).getHours()
+    const slot = Math.floor(h / 3) * 3
+    const key  = String(m.warehouse_id)
+    if (!grid[key]) grid[key] = {}
+    if (!grid[key][slot]) grid[key][slot] = { sum: 0, count: 0 }
+    grid[key][slot].sum   += m.temperature
+    grid[key][slot].count += 1
+    whCountry[key] = m.country
+  })
+
+  // Trier par entrepôt, prendre les 8 premiers max
+  const warehouseIds = Object.keys(grid)
+    .sort((a, b) => {
+      const totalA = Object.values(grid[a]).reduce((s, c) => s + c.count, 0)
+      const totalB = Object.values(grid[b]).reduce((s, c) => s + c.count, 0)
+      return totalB - totalA
+    })
+    .slice(0, 8)
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-4">
+    <div className="bg-white dark:bg-[#1c1a17] rounded-xl border border-gray-100 dark:border-white/10 p-4">
       <div className="mb-3">
-        <p className="text-sm font-medium text-gray-800">Heatmap température</p>
-        <p className="text-xs text-gray-400">°C moyen · par entrepôt × heure</p>
+        <p className="text-sm font-medium text-gray-800 dark:text-stone-100">Heatmap température</p>
+        <p className="text-xs text-gray-400 dark:text-stone-500">°C moyen · par entrepôt × créneau horaire</p>
       </div>
 
       <div
         className="grid gap-1"
-        style={{ gridTemplateColumns: `80px repeat(${HOURS.length}, 1fr)` }}
+        style={{ gridTemplateColumns: `110px repeat(${HOUR_SLOTS.length}, 1fr)` }}
         role="table"
         aria-label="Heatmap températures par heure"
       >
-        {/* Header */}
+        {/* En-tête */}
         <div />
-        {HOURS.map((h) => (
-          <div key={h} className="text-center text-[10px] text-gray-400 pb-1">{h}</div>
+        {SLOT_LABELS.map(h => (
+          <div key={h} className="text-center text-[10px] text-gray-400 dark:text-stone-500 pb-1">{h}</div>
         ))}
 
-        {/* Rows */}
-        {rows.map((wh) => {
-          const data = BASE_DATA[wh] ?? BASE_DATA['W-001']
+        {/* Lignes */}
+        {warehouseIds.map(whId => {
+          const cCode = whCountry[whId] ?? ''
+          const cLabel = COUNTRY_MAP[cCode] ?? cCode
           return (
-            <>
-              <div key={`lbl-${wh}`} className="text-[11px] text-gray-500 flex items-center pr-2">{wh}</div>
-              {data.map((v, i) => {
-                const { bg, text } = tempStyle(v)
+            <div key={whId} className="contents">
+              <div className="text-[11px] text-gray-500 dark:text-stone-400 flex items-center pr-2 leading-tight">
+                <span>Ent. #{whId}<br /><span className="text-[9px] text-gray-300 dark:text-stone-600">{cLabel}</span></span>
+              </div>
+              {HOUR_SLOTS.map(slot => {
+                const cell = grid[whId]?.[slot]
+                const val  = cell ? parseFloat((cell.sum / cell.count).toFixed(1)) : null
+                const { bg, text } = tempStyle(val)
                 return (
                   <div
-                    key={i}
-                    className="h-7 rounded flex items-center justify-center text-[10px] font-medium"
+                    key={slot}
+                    className="h-8 rounded flex items-center justify-center text-[10px] font-medium transition-opacity"
                     style={{ background: bg, color: text }}
-                    title={`${wh} à ${HOURS[i]} : ${v}°C`}
+                    title={val !== null ? `Entrepôt #${whId} à ${SLOT_LABELS[HOUR_SLOTS.indexOf(slot)]} : ${val}°C` : 'Pas de données'}
                   >
-                    {v.toFixed(1)}
+                    {val !== null ? val.toFixed(1) : '—'}
                   </div>
                 )
               })}
-            </>
+            </div>
           )
         })}
       </div>
 
-      {/* Legend */}
+      {/* Légende */}
       <div className="flex items-center gap-2 mt-3">
-        <span className="text-[10px] text-gray-400">Froid</span>
-        {['#E6F1FB', '#85B7EB', '#EF9F27', '#D85A30', '#B53030'].map((c) => (
+        <span className="text-[10px] text-gray-400 dark:text-stone-500">Froid</span>
+        {['#E6F1FB', '#85B7EB', '#EF9F27', '#D85A30', '#B53030'].map(c => (
           <div key={c} className="w-5 h-2.5 rounded-sm" style={{ background: c }} />
         ))}
-        <span className="text-[10px] text-gray-400">Chaud</span>
+        <span className="text-[10px] text-gray-400 dark:text-stone-500">Chaud</span>
       </div>
     </div>
   )

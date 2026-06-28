@@ -1,19 +1,13 @@
-/**
- * Administration.tsx — fonctionnel
- *
- * - UsersSection : CRUD complet (ajout, toggle statut, suppression)
- * - WarehousesSection : chargée depuis /warehouses/ réel
- * - CountriesSection : chargée depuis /consolidated réel
- * - Config/Logs/Audit/Sessions : toasts de confirmation sur chaque action
- * - Permissions : toggles cliquables et sauvegardables
- */
 import React, { useState, useEffect, useCallback } from 'react'
 import {
   Users, Shield, Key, MapPin, Warehouse, Settings as SettingsIcon,
   Terminal, ListChecks, Laptop, Plus, Check, Save, LogOut,
-  Smartphone, Trash2, Edit2, X, UserPlus,
+  Trash2, Edit2, X, UserPlus, RefreshCw,
 } from 'lucide-react'
-import api from '../services/api'
+import api, { getUsers, deleteUser, getAllCountries, getAllWarehouses } from '../services/api'
+import type { ApiUser } from '../services/api'
+import { useAuth } from '../context/AuthContext'
+import CreateUserModal from '../components/CreateUserModal'
 
 type SectionKey = 'users'|'roles'|'perms'|'countries'|'warehouses'|'config'|'logs'|'audit'|'sessions'
 
@@ -32,6 +26,11 @@ const NAV_GROUPS = [
     { key: 'sessions' as SectionKey, label: 'Sessions',      icon: Laptop       },
   ]},
 ]
+
+const ROLE_BADGE: Record<string, string> = {
+  siege: 'red', responsable_exploitation: 'blue',
+  responsable_entrepot: 'amber', qualite: 'green', supply_chain: 'gray',
+}
 
 // ── Toast ──────────────────────────────────────────────────────────────────────
 function Toast({ msg, onClose }: { msg: string; onClose: () => void }) {
@@ -59,7 +58,8 @@ function Badge({ tone, children }: { tone: string; children: React.ReactNode }) 
   return <span style={{ fontSize:10, padding:'2px 7px', borderRadius:999, fontWeight:500,
     display:'inline-block', background:s.bg, color:s.color }}>{children}</span>
 }
-function Av({ initials, size=26 }: { initials: string; size?: number }) {
+function Av({ name, size=26 }: { name: string; size?: number }) {
+  const initials = name.split(' ').map(p => p[0]).join('').slice(0,2).toUpperCase()
   return <span style={{ width:size, height:size, borderRadius:'50%', background:'#E6F1FB',
     color:'#185FA5', fontSize:size<=20?9:10, fontWeight:500, display:'inline-flex',
     alignItems:'center', justifyContent:'center', marginRight:6, verticalAlign:'middle', flexShrink:0 }}>{initials}</span>
@@ -97,110 +97,111 @@ function Td({ children, muted, style }: { children: React.ReactNode; muted?: boo
   return <td style={{ padding:8, borderBottom:'0.5px solid #f0ece8', color: muted ? '#7a766f' : '#1c1a17', verticalAlign:'middle', ...style }}>{children}</td>
 }
 
-// ── Users section (CRUD) ───────────────────────────────────────────────────────
-interface UserRow { id: number; initials: string; name: string; email: string; role: string; roleBadge: string; active: boolean; last: string }
+// ── Users section ──────────────────────────────────────────────────────────────
+function UsersSection({ onToast, users, loading, onRefresh }: {
+  onToast: (m: string) => void
+  users: ApiUser[]
+  loading: boolean
+  onRefresh: () => void
+}) {
+  const [showCreate, setShowCreate] = useState(false)
+  const [filter, setFilter]         = useState('')
+  const { user: me } = useAuth()
 
-function UsersSection({ onToast }: { onToast: (m: string) => void }) {
-  const [users, setUsers] = useState<UserRow[]>([
-    { id:1, initials:'AS', name:'Admin Siège',    email:'admin.siege@futurekawa.com',    role:'siege',                    roleBadge:'red',   active:true,  last:'Il y a 4 min' },
-    { id:2, initials:'AB', name:'Admin Brésil',   email:'admin.bresil@futurekawa.com',   role:'responsable_exploitation', roleBadge:'blue',  active:true,  last:'Il y a 2h' },
-    { id:3, initials:'AE', name:'Admin Équateur', email:'admin.equateur@futurekawa.com', role:'responsable_exploitation', roleBadge:'blue',  active:true,  last:'Il y a 3h' },
-    { id:4, initials:'AC', name:'Admin Colombie', email:'admin.colombie@futurekawa.com', role:'responsable_exploitation', roleBadge:'blue',  active:false, last:'Il y a 1j' },
-  ])
-  const [showInvite, setShowInvite] = useState(false)
-  const [newUser, setNewUser] = useState({ name:'', email:'', role:'responsable_exploitation' })
-  const [filter, setFilter] = useState('')
+  const handleDelete = async (u: ApiUser) => {
+    if (!window.confirm(`Supprimer ${u.name} ?`)) return
+    try {
+      await deleteUser(u.id)
+      onToast(`${u.name} supprimé`)
+      onRefresh()
+    } catch {
+      onToast('Erreur lors de la suppression')
+    }
+  }
 
-  const toggleActive = (id: number) => {
-    setUsers(p => p.map(u => u.id === id ? { ...u, active: !u.active } : u))
-    onToast('Statut mis à jour')
-  }
-  const deleteUser = (id: number) => { setUsers(p => p.filter(u => u.id !== id)); onToast('Utilisateur supprimé') }
-  const invite = () => {
-    if (!newUser.name || !newUser.email) return
-    const init = newUser.name.split(' ').map(p => p[0]).join('').slice(0,2).toUpperCase()
-    setUsers(p => [...p, { id: Date.now(), initials:init, name:newUser.name, email:newUser.email, role:newUser.role, roleBadge:'gray', active:true, last:"À l'instant" }])
-    setShowInvite(false); setNewUser({ name:'', email:'', role:'responsable_exploitation' })
-    onToast(`Invitation envoyée à ${newUser.email}`)
-  }
-  const filtered = users.filter(u => !filter || u.name.toLowerCase().includes(filter.toLowerCase()) || u.email.toLowerCase().includes(filter.toLowerCase()))
+  const filtered = users.filter(u =>
+    !filter
+    || u.name.toLowerCase().includes(filter.toLowerCase())
+    || u.email.toLowerCase().includes(filter.toLowerCase())
+  )
 
   return (
+    <>
+    {showCreate && (
+      <CreateUserModal
+        onClose={() => setShowCreate(false)}
+        onCreated={() => {
+          setShowCreate(false)
+          onToast('Utilisateur créé avec succès')
+          onRefresh()
+        }}
+      />
+    )}
     <Card title={`Utilisateurs (${users.length})`} action={
       <div style={{ display:'flex', gap:8 }}>
         <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Rechercher…"
           style={{ padding:'4px 8px', fontSize:12, borderRadius:7, border:'0.5px solid #d0ccc5', fontFamily:'inherit' }} />
-        <Btn primary onClick={() => setShowInvite(true)}><UserPlus size={13} /> Inviter</Btn>
+        <Btn onClick={onRefresh}><RefreshCw size={12} /></Btn>
+        <Btn primary onClick={() => setShowCreate(true)}><UserPlus size={13} /> Créer un utilisateur</Btn>
       </div>
     }>
-      {showInvite && (
-        <div style={{ background:'#f4f7f1', borderRadius:8, padding:12, marginBottom:12, display:'grid', gridTemplateColumns:'1fr 1fr 1fr auto', gap:8, alignItems:'end' }}>
-          <div>
-            <div style={{ fontSize:11, color:'#5a5650', marginBottom:3 }}>Nom</div>
-            <input value={newUser.name} onChange={e=>setNewUser(p=>({...p,name:e.target.value}))} placeholder="Prénom Nom"
-              style={{ padding:'6px 8px', fontSize:12, borderRadius:7, border:'0.5px solid #d0ccc5', width:'100%', fontFamily:'inherit' }} />
-          </div>
-          <div>
-            <div style={{ fontSize:11, color:'#5a5650', marginBottom:3 }}>Email</div>
-            <input value={newUser.email} onChange={e=>setNewUser(p=>({...p,email:e.target.value}))} placeholder="email@futurekawa.com" type="email"
-              style={{ padding:'6px 8px', fontSize:12, borderRadius:7, border:'0.5px solid #d0ccc5', width:'100%', fontFamily:'inherit' }} />
-          </div>
-          <div>
-            <div style={{ fontSize:11, color:'#5a5650', marginBottom:3 }}>Rôle</div>
-            <select value={newUser.role} onChange={e=>setNewUser(p=>({...p,role:e.target.value}))}
-              style={{ padding:'6px 8px', fontSize:12, borderRadius:7, border:'0.5px solid #d0ccc5', width:'100%', fontFamily:'inherit' }}>
-              {['siege','responsable_exploitation','responsable_entrepot','qualite','supply_chain'].map(r => <option key={r}>{r}</option>)}
-            </select>
-          </div>
-          <div style={{ display:'flex', gap:6 }}>
-            <Btn primary onClick={invite}><Check size={13} /></Btn>
-            <Btn onClick={() => setShowInvite(false)}><X size={13} /></Btn>
-          </div>
-        </div>
+      {loading
+        ? <div style={{ padding:'1rem', color:'#7a766f', fontSize:12 }}>Chargement des utilisateurs…</div>
+        : (
+        <Table head={['Nom','Email','Rôle','Pays','Actions']}>
+          {filtered.map(u => (
+            <Row key={u.id}>
+              <Td><Av name={u.name} />{u.name}</Td>
+              <Td muted>{u.email}</Td>
+              <Td><Badge tone={ROLE_BADGE[u.role] ?? 'gray'}>{u.role}</Badge></Td>
+              <Td muted>{u.country_code ?? '—'}</Td>
+              <Td>
+                <div style={{ display:'flex', gap:4 }}>
+                  <Btn small onClick={() => onToast(`Édition de ${u.name} (formulaire à implémenter)`)}><Edit2 size={12} /></Btn>
+                  {u.email !== me?.email && (
+                    <Btn small danger onClick={() => handleDelete(u)}><Trash2 size={12} /></Btn>
+                  )}
+                </div>
+              </Td>
+            </Row>
+          ))}
+        </Table>
       )}
-      <Table head={['Nom','Email','Rôle','Statut','Dernière connexion','Actions']}>
-        {filtered.map(u => (
-          <Row key={u.id}>
-            <Td><Av initials={u.initials} />{u.name}</Td>
-            <Td muted>{u.email}</Td>
-            <Td><Badge tone={u.roleBadge}>{u.role}</Badge></Td>
-            <Td>
-              <button onClick={() => toggleActive(u.id)} style={{ background:'none', border:'none', cursor:'pointer', padding:0 }}>
-                <Badge tone={u.active ? 'green' : 'amber'}>{u.active ? 'Actif' : 'Inactif'}</Badge>
-              </button>
-            </Td>
-            <Td muted>{u.last}</Td>
-            <Td>
-              <div style={{ display:'flex', gap:4 }}>
-                <Btn small onClick={() => onToast(`Édition de ${u.name}`)}><Edit2 size={12} /></Btn>
-                <Btn small danger onClick={() => deleteUser(u.id)}><Trash2 size={12} /></Btn>
-              </div>
-            </Td>
-          </Row>
-        ))}
-      </Table>
     </Card>
+    </>
   )
 }
 
 // ── Roles ──────────────────────────────────────────────────────────────────────
-function RolesSection({ onToast }: { onToast: (m: string) => void }) {
-  const [roles] = useState([
-    { name:'siege',                    users:1, desc:'Accès global à tous les pays',           badge:'red'   },
-    { name:'responsable_exploitation', users:3, desc:'Gestion entrepôts, lots, alertes',       badge:'blue'  },
-    { name:'responsable_entrepot',     users:2, desc:'Gestion entrepôts et lots',              badge:'amber' },
-    { name:'qualite',                  users:2, desc:'Lecture lots et analytics',              badge:'green' },
-    { name:'supply_chain',             users:1, desc:'Lecture lots, pays et analytics',        badge:'gray'  },
-  ])
+const ROLE_DESC: Record<string, string> = {
+  siege:                    'Accès global à tous les pays',
+  responsable_exploitation: 'Gestion entrepôts, lots, alertes',
+  responsable_entrepot:     'Gestion entrepôts et lots',
+  qualite:                  'Lecture lots et analytics',
+  supply_chain:             'Lecture lots, pays et analytics',
+}
+
+function RolesSection({ users, onToast }: { users: ApiUser[]; onToast: (m: string) => void }) {
+  const roleCounts = users.reduce<Record<string, number>>((acc, u) => {
+    acc[u.role] = (acc[u.role] ?? 0) + 1
+    return acc
+  }, {})
+
+  const roles = Object.keys(ROLE_DESC).map(name => ({
+    name,
+    users: roleCounts[name] ?? 0,
+    desc: ROLE_DESC[name],
+    badge: ROLE_BADGE[name] ?? 'gray',
+  }))
+
   return (
-    <Card title="Rôles" action={<Btn primary onClick={() => onToast('Nouveau rôle')}><Plus size={13} /> Nouveau rôle</Btn>}>
-      <Table head={['Rôle','Utilisateurs','Description','']}>
+    <Card title="Rôles" action={<Btn primary onClick={() => onToast('Les rôles sont définis côté serveur')}><Plus size={13} /> Nouveau rôle</Btn>}>
+      <Table head={['Rôle','Utilisateurs','Description']}>
         {roles.map(r => (
           <Row key={r.name}>
             <Td><Badge tone={r.badge}>{r.name}</Badge></Td>
             <Td muted>{r.users}</Td>
             <Td muted>{r.desc}</Td>
-            <Td><Btn small onClick={() => onToast(`Édition du rôle ${r.name}`)}><Edit2 size={12} /></Btn></Td>
           </Row>
         ))}
       </Table>
@@ -239,7 +240,8 @@ function PermissionsSection({ onToast }: { onToast: (m: string) => void }) {
                 <div key={ci} style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:4 }}>
                   <button onClick={() => toggle(ri,ci)} style={{
                     width:16, height:16, borderRadius:4, cursor: ci===0?'default':'pointer',
-                    background: on ? '#1a2e1a' : 'transparent', border: on ? 'none' : '1.5px solid #d0ccc5',
+                    background: on ? '#1a2e1a' : 'transparent',
+                    border: on ? 'none' : '1.5px solid #d0ccc5',
                     display:'flex', alignItems:'center', justifyContent:'center',
                   }}>
                     {on && <Check size={10} color="#fff" />}
@@ -254,26 +256,22 @@ function PermissionsSection({ onToast }: { onToast: (m: string) => void }) {
   )
 }
 
-// ── Countries (live backend) ───────────────────────────────────────────────────
+// ── Countries ──────────────────────────────────────────────────────────────────
 function CountriesSection({ onToast }: { onToast: (m: string) => void }) {
   const [countries, setCountries] = useState<{ code: string; name: string; lots: number; alerts: number }[]>([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    api.get('/consolidated').then(r => {
-      setCountries((r.data as any[]).map(c => ({
-        code: c.country_code,
-        name: { BR:'Brésil', EC:'Équateur', CO:'Colombie' }[c.country_code as string] ?? c.country_code,
-        lots: c.lots?.length ?? 0,
+    getAllCountries().then((data: any[]) => {
+      setCountries(data.map((c: any) => ({
+        code:   c.country_code,
+        name:   ({ BR:'Brésil', EC:'Équateur', CO:'Colombie' } as Record<string,string>)[c.country_code] ?? c.country_code,
+        lots:   c.lots?.length ?? 0,
         alerts: c.alerts?.length ?? 0,
       })))
-    }).catch(() => setCountries([
-      { code:'BR', name:'Brésil',    lots:0, alerts:0 },
-      { code:'EC', name:'Équateur',  lots:0, alerts:0 },
-      { code:'CO', name:'Colombie',  lots:0, alerts:0 },
-    ])).finally(() => setLoading(false))
+    }).catch(() => {}).finally(() => setLoading(false))
   }, [])
   return (
-    <Card title="Pays" action={<Btn primary onClick={() => onToast('Formulaire nouveau pays')}><Plus size={13} /> Ajouter</Btn>}>
+    <Card title="Pays" action={<Btn primary onClick={() => onToast('Ajout de pays non supporté')}><Plus size={13} /> Ajouter</Btn>}>
       {loading ? <div style={{ padding:'1rem', color:'#7a766f', fontSize:12 }}>Chargement…</div> : (
         <Table head={['Pays','Code','Lots','Alertes','Statut']}>
           {countries.map(c => (
@@ -288,33 +286,31 @@ function CountriesSection({ onToast }: { onToast: (m: string) => void }) {
   )
 }
 
-// ── Warehouses (live backend) ──────────────────────────────────────────────────
+// ── Warehouses ─────────────────────────────────────────────────────────────────
 function WarehousesSection({ onToast }: { onToast: (m: string) => void }) {
   const [warehouses, setWarehouses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const load = useCallback(() => {
     setLoading(true)
-    api.get('/warehouses/').then(r => setWarehouses(r.data)).catch(() => setWarehouses([])).finally(() => setLoading(false))
+    getAllWarehouses().then(setWarehouses).catch(() => setWarehouses([])).finally(() => setLoading(false))
   }, [])
   useEffect(() => { load() }, [load])
   return (
     <Card title={`Entrepôts${warehouses.length > 0 ? ` (${warehouses.length})` : ''}`}
-      action={<div style={{ display:'flex', gap:6 }}><Btn onClick={load}>↻</Btn><Btn primary onClick={() => onToast('Créer depuis la page Entrepôts')}><Plus size={13} /> Ajouter</Btn></div>}>
+      action={<div style={{ display:'flex', gap:6 }}><Btn onClick={load}><RefreshCw size={12} /></Btn><Btn primary onClick={() => onToast('Créer depuis la page Entrepôts')}><Plus size={13} /> Ajouter</Btn></div>}>
       {loading ? <div style={{ padding:'1rem', color:'#7a766f', fontSize:12 }}>Chargement…</div> : (
-        <Table head={['Nom','Localisation','Pays','Exploitation','']}>
-          {warehouses.length === 0 ? (
-            <tr><td colSpan={5} style={{ padding:16, color:'#7a766f', fontSize:12, textAlign:'center' }}>
-              Aucun entrepôt — créez-en un depuis la page Entrepôts
-            </td></tr>
-          ) : warehouses.map((w, i) => (
-            <Row key={i}>
-              <Td>{w.name}</Td>
-              <Td muted>{w.location ?? '—'}</Td>
-              <Td><Badge tone={w.country_code === 'BR' ? 'green' : w.country_code === 'EC' ? 'amber' : 'blue'}>{w.country_code}</Badge></Td>
-              <Td muted>{w.exploitation_id}</Td>
-              <Td><Btn small onClick={() => onToast(`Édition de ${w.name}`)}><Edit2 size={12} /></Btn></Td>
-            </Row>
-          ))}
+        <Table head={['Nom','Localisation','Pays','Exploitation']}>
+          {warehouses.length === 0
+            ? <tr><td colSpan={4} style={{ padding:16, color:'#7a766f', fontSize:12, textAlign:'center' }}>Aucun entrepôt trouvé</td></tr>
+            : warehouses.map((w, i) => (
+              <Row key={i}>
+                <Td>{w.name}</Td>
+                <Td muted>{w.location ?? '—'}</Td>
+                <Td><Badge tone={w.country_code === 'BR' ? 'green' : w.country_code === 'EC' ? 'amber' : 'blue'}>{w.country_code}</Badge></Td>
+                <Td muted>#{w.exploitation_id}</Td>
+              </Row>
+            ))
+          }
         </Table>
       )}
     </Card>
@@ -340,32 +336,52 @@ function ConfigSection({ onToast }: { onToast: (m: string) => void }) {
   )
 }
 
-// ── Logs ───────────────────────────────────────────────────────────────────────
+// ── Logs — chargés depuis le backend ──────────────────────────────────────────
 function LogsSection() {
+  const [logs, setLogs]   = useState<any[]>([])
   const [filter, setFilter] = useState('Tous')
-  const LOGS: [string,string,string,string][] = [
-    ['2026-06-23 08:12:33','INFO','Démarrage du service MQTT broker','blue'],
-    ['2026-06-23 08:14:07','WARN','Capteur S-9 — délai de réponse élevé (1240ms)','amber'],
-    ['2026-06-23 08:17:22','ERROR','Connexion W-003 perdue — timeout 30s','red'],
-    ['2026-06-23 08:19:05','INFO','Sauvegarde automatique déclenchée','blue'],
-    ['2026-06-23 08:22:41','INFO','Export analytics généré (user: admin)','blue'],
-    ['2026-06-23 08:25:14','WARN','Tentative de connexion échouée — 3 essais','amber'],
-  ]
-  const filtered = filter === 'Tous' ? LOGS : LOGS.filter(([,lvl]) =>
-    (filter==='Erreurs' && lvl==='ERROR') || (filter==='Warnings' && lvl==='WARN') || (filter==='Info' && lvl==='INFO')
-  )
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Reconstruit des logs depuis les alertes réelles
+    Promise.all([
+      api.get('/consolidated/BR/alerts').catch(() => ({ data: [] })),
+      api.get('/consolidated/EC/alerts').catch(() => ({ data: [] })),
+      api.get('/consolidated/CO/alerts').catch(() => ({ data: [] })),
+    ]).then(([br, ec, co]) => {
+      const all: any[] = [
+        ...(br.data as any[]).map((a: any) => ({ ts: a.triggered_at, level: 'WARN', msg: `[BR] ${a.message}`, tone: 'amber' })),
+        ...(ec.data as any[]).map((a: any) => ({ ts: a.triggered_at, level: 'WARN', msg: `[EC] ${a.message}`, tone: 'amber' })),
+        ...(co.data as any[]).map((a: any) => ({ ts: a.triggered_at, level: 'WARN', msg: `[CO] ${a.message}`, tone: 'amber' })),
+      ].sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime()).slice(0, 20)
+      setLogs(all)
+    }).finally(() => setLoading(false))
+  }, [])
+
+  const filtered = filter === 'Tous' ? logs
+    : logs.filter(l =>
+        (filter === 'Erreurs'  && l.level === 'ERROR') ||
+        (filter === 'Warnings' && l.level === 'WARN')  ||
+        (filter === 'Info'     && l.level === 'INFO')
+      )
+
   return (
-    <Card title="Logs système" action={
+    <Card title={`Logs système (${filtered.length})`} action={
       <select value={filter} onChange={e=>setFilter(e.target.value)}
         style={{ fontSize:12, padding:'4px 8px', borderRadius:7, border:'0.5px solid #d0ccc5', background:'#fff', fontFamily:'inherit' }}>
         {['Tous','Erreurs','Warnings','Info'].map(o=><option key={o}>{o}</option>)}
       </select>
     }>
-      {filtered.map(([time,level,msg,tone],i) => (
+      {loading ? <div style={{ color:'#7a766f', fontSize:12 }}>Chargement…</div>
+      : filtered.length === 0
+      ? <div style={{ color:'#7a766f', fontSize:12, padding:'1rem 0', textAlign:'center' }}>Aucun log à afficher</div>
+      : filtered.map((l, i) => (
         <div key={i} style={{ display:'flex', gap:10, padding:'7px 0', borderBottom: i===filtered.length-1?'none':'0.5px solid #f0ece8', alignItems:'flex-start', fontSize:12 }}>
-          <span style={{ color:'#7a766f', whiteSpace:'nowrap', fontSize:11, minWidth:130, fontFamily:'monospace' }}>{time}</span>
-          <span style={{ flexShrink:0 }}><Badge tone={tone}>{level}</Badge></span>
-          <span style={{ color:'#1c1a17', flex:1 }}>{msg}</span>
+          <span style={{ color:'#7a766f', whiteSpace:'nowrap', fontSize:11, minWidth:130, fontFamily:'monospace' }}>
+            {new Date(l.ts).toLocaleString('fr-FR')}
+          </span>
+          <span style={{ flexShrink:0 }}><Badge tone={l.tone}>{l.level}</Badge></span>
+          <span style={{ color:'#1c1a17', flex:1 }}>{l.msg}</span>
         </div>
       ))}
     </Card>
@@ -374,74 +390,193 @@ function LogsSection() {
 
 // ── Audit ──────────────────────────────────────────────────────────────────────
 function AuditSection() {
-  const LOG = [
-    { date:'23/06 08:22', initials:'AS', name:'Admin Siège',  action:'Export',     actionBadge:'blue',  target:'Analytics PDF' },
-    { date:'23/06 07:54', initials:'AB', name:'Admin Brésil', action:'Résolution', actionBadge:'green', target:'Alerte #12 — W-001' },
-    { date:'22/06 18:03', initials:'AS', name:'Admin Siège',  action:'Modif.',     actionBadge:'amber', target:'Seuil temp. W-002' },
-    { date:'22/06 15:30', initials:'AE', name:'Admin EC',     action:'Connexion',  actionBadge:'gray',  target:'Dashboard' },
-  ]
+  const [alerts, setAlerts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    Promise.all([
+      api.get('/consolidated/BR/alerts').catch(() => ({ data: [] })),
+      api.get('/consolidated/EC/alerts').catch(() => ({ data: [] })),
+      api.get('/consolidated/CO/alerts').catch(() => ({ data: [] })),
+    ]).then(([br, ec, co]) => {
+      const all = [
+        ...(br.data as any[]).map((a: any) => ({ ...a, country: 'BR' })),
+        ...(ec.data as any[]).map((a: any) => ({ ...a, country: 'EC' })),
+        ...(co.data as any[]).map((a: any) => ({ ...a, country: 'CO' })),
+      ].sort((a, b) => new Date(b.triggered_at).getTime() - new Date(a.triggered_at).getTime()).slice(0, 10)
+      setAlerts(all)
+    }).finally(() => setLoading(false))
+  }, [])
+
   return (
     <Card title="Journal d'audit">
-      <Table head={['Date','Utilisateur','Action','Cible']}>
-        {LOG.map((a,i) => (
-          <Row key={i}>
-            <Td muted style={{ fontSize:11 }}>{a.date}</Td>
-            <Td><Av initials={a.initials} size={20} />{a.name}</Td>
-            <Td><Badge tone={a.actionBadge}>{a.action}</Badge></Td>
-            <Td muted>{a.target}</Td>
-          </Row>
-        ))}
-      </Table>
+      {loading ? <div style={{ color:'#7a766f', fontSize:12 }}>Chargement…</div>
+      : alerts.length === 0
+      ? <div style={{ color:'#7a766f', fontSize:12, padding:'1rem 0', textAlign:'center' }}>Aucun événement d'audit</div>
+      : (
+        <Table head={['Date','Pays','Type','Message']}>
+          {alerts.map((a, i) => (
+            <Row key={i}>
+              <Td muted style={{ fontSize:11, whiteSpace:'nowrap' }}>
+                {new Date(a.triggered_at).toLocaleString('fr-FR')}
+              </Td>
+              <Td><Badge tone={a.country === 'BR' ? 'green' : a.country === 'EC' ? 'amber' : 'blue'}>{a.country}</Badge></Td>
+              <Td><Badge tone={a.type === 'expired_lot' ? 'red' : 'amber'}>{a.type}</Badge></Td>
+              <Td muted>{a.message}</Td>
+            </Row>
+          ))}
+        </Table>
+      )}
     </Card>
   )
 }
 
 // ── Sessions ───────────────────────────────────────────────────────────────────
-function SessionsSection({ onToast }: { onToast: (m: string) => void }) {
-  const [sessions, setSessions] = useState([
-    { id:1, initials:'AS', name:'Admin Siège',    device:'macOS · Chrome', icon:'laptop', ip:'192.168.1.10', since:'Cet appareil' },
-    { id:2, initials:'AB', name:'Admin Brésil',   device:'iOS · Safari',   icon:'mobile', ip:'10.0.0.42',    since:'Il y a 2h' },
-    { id:3, initials:'AC', name:'Admin Colombie', device:'Windows · Edge', icon:'laptop', ip:'10.0.1.88',    since:'Il y a 1h' },
-  ])
-  const revoke = (id: number) => { setSessions(p => p.filter(s => s.id !== id)); onToast('Session révoquée') }
+function SessionsSection({ users, onToast }: { users: ApiUser[]; onToast: (m: string) => void }) {
+  const { user: me, logout } = useAuth()
+
+  // Décode le payload JWT sans vérification de signature (lecture seule)
+  const tokenPayload = (() => {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+    if (!token) return null
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      return payload as { sub: string; role: string; exp: number; iat?: number }
+    } catch { return null }
+  })()
+
+  const sessionStart = tokenPayload?.iat
+    ? new Date(tokenPayload.iat * 1000).toLocaleString('fr-FR')
+    : 'Inconnue'
+
+  const tokenExpires = tokenPayload?.exp
+    ? new Date(tokenPayload.exp * 1000).toLocaleString('fr-FR')
+    : 'Inconnue'
+
+  const isExpiringSoon = tokenPayload?.exp
+    ? tokenPayload.exp * 1000 - Date.now() < 30 * 60 * 1000  // < 30 min
+    : false
+
+  const otherUsers = users.filter(u => u.email !== me?.email)
+
+  const handleRevokeAll = () => {
+    logout()
+    onToast('Session terminée — reconnexion requise')
+  }
+
   return (
-    <Card title="Sessions actives" action={
-      <Btn danger onClick={() => { setSessions(s => s.filter(x => x.since === 'Cet appareil')); onToast('Toutes les sessions révoquées') }}>
-        <LogOut size={13} /> Révoquer toutes
-      </Btn>
-    }>
-      <Table head={['Utilisateur','Appareil','IP','Depuis','']}>
-        {sessions.map(s => (
-          <Row key={s.id}>
-            <Td><Av initials={s.initials} />{s.name}</Td>
-            <Td>{s.icon==='laptop' ? <Laptop size={13} style={{ marginRight:6, verticalAlign:'middle' }} /> : <Smartphone size={13} style={{ marginRight:6, verticalAlign:'middle' }} />}{s.device}</Td>
-            <Td muted>{s.ip}</Td>
-            <Td muted>{s.since}</Td>
-            <Td>{s.since !== 'Cet appareil' && <Btn small danger onClick={() => revoke(s.id)}>Révoquer</Btn>}</Td>
-          </Row>
-        ))}
-      </Table>
-    </Card>
+    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      {/* Ma session */}
+      <Card title="Ma session active" action={
+        <Btn danger onClick={handleRevokeAll}><LogOut size={13} /> Déconnecter</Btn>
+      }>
+        {me ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 0', borderBottom:'0.5px solid #f0ece8' }}>
+              <Av name={me.name} size={36} />
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:13, fontWeight:500, color:'#1c1a17' }}>{me.name}</div>
+                <div style={{ fontSize:11, color:'#7a766f', marginTop:1 }}>{me.email}</div>
+              </div>
+              <Badge tone="green">En ligne</Badge>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8 }}>
+              {[
+                { label:'Rôle',         value: me.role },
+                { label:'Connecté le',  value: sessionStart },
+                { label:'Expire le',    value: tokenExpires },
+              ].map(item => (
+                <div key={item.label} style={{ background:'#faf8f5', borderRadius:8, padding:'8px 10px' }}>
+                  <div style={{ fontSize:10, color:'#7a766f', marginBottom:2 }}>{item.label}</div>
+                  <div style={{ fontSize:12, color: item.label === 'Expire le' && isExpiringSoon ? '#A32D2D' : '#1c1a17', fontFamily:'monospace' }}>
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {isExpiringSoon && (
+              <div style={{ background:'#FAEEDA', border:'0.5px solid #F7C879', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#854F0B' }}>
+                ⚠ Votre session expire dans moins de 30 minutes — reconnectez-vous pour continuer.
+              </div>
+            )}
+            <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:'#EAF3DE', borderRadius:8, fontSize:12, color:'#3B6D11' }}>
+              <Laptop size={14} />
+              {navigator.userAgent.includes('Mobile') ? 'Appareil mobile' : 'Bureau'} · {navigator.userAgent.split(' ').find(p => ['Windows','Mac','Linux','iPhone','Android'].some(os => p.includes(os))) ?? 'OS inconnu'}
+            </div>
+          </div>
+        ) : (
+          <div style={{ color:'#7a766f', fontSize:12 }}>Chargement de la session…</div>
+        )}
+      </Card>
+
+      {/* Autres utilisateurs */}
+      <Card title={`Autres utilisateurs (${otherUsers.length})`}>
+        {otherUsers.length === 0
+          ? <div style={{ color:'#7a766f', fontSize:12, padding:'8px 0', textAlign:'center' }}>Aucun autre utilisateur</div>
+          : (
+            <Table head={['Utilisateur','Email','Rôle','Pays','Statut session']}>
+              {otherUsers.map(u => (
+                <Row key={u.id}>
+                  <Td><Av name={u.name} />{u.name}</Td>
+                  <Td muted>{u.email}</Td>
+                  <Td><Badge tone={ROLE_BADGE[u.role] ?? 'gray'}>{u.role}</Badge></Td>
+                  <Td muted>{u.country_code ?? '—'}</Td>
+                  <Td muted style={{ fontSize:11 }}>Non trackée (JWT stateless)</Td>
+                </Row>
+              ))}
+            </Table>
+          )
+        }
+        <div style={{ marginTop:10, fontSize:11, color:'#9a9690', borderTop:'0.5px solid #f0ece8', paddingTop:10 }}>
+          ℹ Les sessions des autres utilisateurs ne sont pas traçables en temps réel car l'authentification est JWT stateless.
+          Pour un tracking complet, intégrer un store de sessions Redis côté serveur.
+        </div>
+      </Card>
+    </div>
   )
 }
 
 // ── Page principale ────────────────────────────────────────────────────────────
 export default function AdministrationPage() {
-  const [active, setActive] = useState<SectionKey>('users')
-  const [toast, setToast]   = useState<string | null>(null)
+  const [active,    setActive]  = useState<SectionKey>('users')
+  const [toast,     setToast]   = useState<string | null>(null)
+  const [users,     setUsers]   = useState<ApiUser[]>([])
+  const [usersLoad, setUsersLoad] = useState(true)
+  const [stats,     setStats]   = useState({ users:0, countries:0 })
+  const { user: me } = useAuth()
+
   const showToast = useCallback((msg: string) => setToast(msg), [])
+
+  const loadUsers = useCallback(async () => {
+    setUsersLoad(true)
+    try {
+      const data = await getUsers()
+      setUsers(data)
+      setStats(s => ({ ...s, users: data.length }))
+    } catch {
+      showToast('Impossible de charger les utilisateurs')
+    } finally {
+      setUsersLoad(false)
+    }
+  }, [showToast])
+
+  useEffect(() => {
+    loadUsers()
+    // Charge le nombre de pays
+    getAllCountries().then((data: any[]) => setStats(s => ({ ...s, countries: data.length }))).catch(() => {})
+  }, [loadUsers])
 
   const p = { onToast: showToast }
   const SECTIONS: Record<SectionKey, React.ReactElement> = {
-    users:      <UsersSection      {...p} />,
-    roles:      <RolesSection      {...p} />,
+    users:      <UsersSection     {...p} users={users} loading={usersLoad} onRefresh={loadUsers} />,
+    roles:      <RolesSection     users={users} {...p} />,
     perms:      <PermissionsSection {...p} />,
     countries:  <CountriesSection  {...p} />,
     warehouses: <WarehousesSection {...p} />,
     config:     <ConfigSection     {...p} />,
     logs:       <LogsSection />,
     audit:      <AuditSection />,
-    sessions:   <SessionsSection   {...p} />,
+    sessions:   <SessionsSection   {...p} users={users} />,
   }
 
   return (
@@ -474,8 +609,13 @@ export default function AdministrationPage() {
       </nav>
 
       <div style={{ flex:1, minWidth:0 }}>
+        {/* Stats réelles */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, marginBottom:10 }}>
-          {[{ n:'Actif', l:'Siège' },{ n:'BR·EC·CO', l:'Pays' },{ n:'3', l:'Sessions' }].map(s => (
+          {[
+            { n: usersLoad ? '…' : String(stats.users),     l:'Utilisateurs'    },
+            { n: usersLoad ? '…' : String(stats.countries), l:'Pays actifs'     },
+            { n: me?.role === 'siege' ? 'Siège' : (me?.role ?? '—'), l:'Votre rôle' },
+          ].map(s => (
             <div key={s.l} style={{ background:'#fff', border:'0.5px solid #e0ddd7', borderRadius:9, padding:'0.875rem', textAlign:'center' }}>
               <div style={{ fontSize:18, fontWeight:500, color:'#1c1a17' }}>{s.n}</div>
               <div style={{ fontSize:11, color:'#7a766f', marginTop:3 }}>{s.l}</div>

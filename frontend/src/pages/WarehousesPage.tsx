@@ -3,18 +3,24 @@ import { useNavigate } from 'react-router-dom'
 import WarehouseCard from '../components/ui/WarehouseCard'
 import WarehouseCreateModal from '../components/WarehouseCreateModal'
 import WarehouseEditModal from '../components/WarehouseEditModal'
-import { getAllWarehouses, getCountryAlerts, getCountryMeasures, deleteWarehouse } from '../services/api'
+import { getAllWarehouses, getCountryAlerts, getCountryMeasures, getCountryLots, deleteWarehouse } from '../services/api'
 import type { Warehouse } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 
 interface EnrichedWarehouse extends Warehouse {
   temp?: number
   humidity?: number
   iotStatus?: 'online' | 'offline' | 'degraded'
   alertCount?: number
+  lotCount?: number
 }
 
 export default function WarehousesPage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const isSiege = user?.role === 'siege' || user?.role === 'admin'
+  const lockedCountry = isSiege ? null : (user?.country_code ?? null)
+
   const [warehouses,   setWarehouses]   = useState<EnrichedWarehouse[]>([])
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState<string | null>(null)
@@ -27,16 +33,37 @@ export default function WarehousesPage() {
   const fetchData = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const whs = await getAllWarehouses()
-      const enriched = await Promise.all(
-        whs.map(async (w): Promise<EnrichedWarehouse> => {
-          const code = w.country_code ?? 'BR'
-          try {
-            const [measures, alerts] = await Promise.all([
-              getCountryMeasures(code, w.id),
+      const allWhs = await getAllWarehouses()
+      const whs = lockedCountry
+        ? allWhs.filter(w => (w.country_code ?? '').toUpperCase() === lockedCountry.toUpperCase())
+        : allWhs
+
+      // Récupérer lots/alertes/mesures par pays en une seule passe
+      const countryCodes = [...new Set(whs.map(w => w.country_code ?? 'BR'))]
+      const perCountry = Object.fromEntries(
+        await Promise.all(
+          countryCodes.map(async code => {
+            const [lots, alerts] = await Promise.allSettled([
+              getCountryLots(code),
               getCountryAlerts(code),
             ])
-            const whAlerts = (alerts as any[]).filter(a => a.warehouse_id === w.id)
+            return [code, {
+              lots:   lots.status   === 'fulfilled' ? lots.value   : [],
+              alerts: alerts.status === 'fulfilled' ? alerts.value : [],
+            }]
+          })
+        )
+      )
+
+      const enriched = await Promise.all(
+        whs.map(async (w): Promise<EnrichedWarehouse> => {
+          const code     = w.country_code ?? 'BR'
+          const ctryLots = perCountry[code]?.lots   ?? []
+          const ctryAlerts = perCountry[code]?.alerts ?? []
+          const lotCount   = ctryLots.filter((l: any) => l.warehouse_id === w.id).length
+          const whAlerts   = ctryAlerts.filter((a: any) => a.warehouse_id === w.id)
+          try {
+            const measures = await getCountryMeasures(code, w.id)
             const latest = measures.length > 0 ? measures[measures.length - 1] : null
             return {
               ...w,
@@ -44,9 +71,10 @@ export default function WarehousesPage() {
               humidity:   latest?.humidity,
               iotStatus:  latest ? (whAlerts.length > 0 ? 'degraded' : 'online') : 'offline',
               alertCount: whAlerts.length,
+              lotCount,
             }
           } catch {
-            return { ...w, iotStatus: 'offline', alertCount: 0 }
+            return { ...w, iotStatus: 'offline', alertCount: whAlerts.length, lotCount }
           }
         })
       )
@@ -56,7 +84,7 @@ export default function WarehousesPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [lockedCountry])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -154,8 +182,8 @@ export default function WarehousesPage() {
                 id={`${w.country_code}-${w.id}`}
                 name={w.name}
                 country={w.country_code ?? ''}
-                capacity={0}
-                lots={0}
+                capacity={w.exploitation_id}
+                lots={w.lotCount ?? 0}
                 temp={w.temp ?? 0}
                 humidity={w.humidity ?? 0}
                 iotStatus={w.iotStatus ?? 'offline'}
