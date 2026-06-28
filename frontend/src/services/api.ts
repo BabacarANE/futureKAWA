@@ -246,6 +246,44 @@ export const createExploitation = async (
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// COUNTRIES CONFIG (seuils IoT par pays)
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface CountryConfig {
+  code: string
+  name: string
+  ideal_temp: number
+  ideal_humidity: number
+  tolerance_temp: number
+  tolerance_humidity: number
+}
+
+export const getAllCountryConfigs = async (): Promise<CountryConfig[]> => {
+  const { data } = await api.get<CountryConfig[]>('/countries/')
+  return data
+}
+
+export const getCountryConfig = async (code: string): Promise<CountryConfig> => {
+  const { data } = await api.get<CountryConfig>(`/countries/${code}`)
+  return data
+}
+
+export const updateCountryConfig = async (
+  code: string,
+  payload: Omit<CountryConfig, 'code' | 'name'>
+): Promise<CountryConfig> => {
+  const { data } = await api.put<CountryConfig>(`/countries/${code}`, payload)
+  return data
+}
+
+export const createCountryConfig = async (
+  payload: CountryConfig
+): Promise<CountryConfig> => {
+  const { data } = await api.post<CountryConfig>('/countries/', payload)
+  return data
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // STATS / ANALYTICS
 // ════════════════════════════════════════════════════════════════════════════
 

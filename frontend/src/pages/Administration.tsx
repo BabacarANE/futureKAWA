@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Users, Shield, Key, MapPin, Warehouse, Settings as SettingsIcon,
   Terminal, ListChecks, Laptop, Plus, Check, Save, LogOut,
   Trash2, Edit2, X, UserPlus, RefreshCw,
 } from 'lucide-react'
-import api, { getUsers, deleteUser, getAllCountries, getAllWarehouses } from '../services/api'
-import type { ApiUser } from '../services/api'
+import api, { getUsers, deleteUser, getAllCountries, getAllWarehouses, getAllCountryConfigs, updateCountryConfig } from '../services/api'
+import type { ApiUser, CountryConfig } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import CreateUserModal from '../components/CreateUserModal'
 
@@ -317,22 +318,135 @@ function WarehousesSection({ onToast }: { onToast: (m: string) => void }) {
   )
 }
 
-// ── Config ─────────────────────────────────────────────────────────────────────
+// ── Config IoT par pays ────────────────────────────────────────────────────────
+const COUNTRY_NAMES: Record<string, string> = { BR: '🇧🇷 Brésil', EC: '🇪🇨 Équateur', CO: '🇨🇴 Colombie' }
+
 function ConfigSection({ onToast }: { onToast: (m: string) => void }) {
-  const [vals, setVals] = useState(['25','75','30','90','alertes@futurekawa.com'])
-  const labels = ['Température max (°C)','Humidité max (%)','Intervalle IoT (s)','Rétention logs (jours)','Email notifications']
-  return (
-    <Card title="Configuration système" action={<Btn primary onClick={() => onToast('Configuration sauvegardée ✓')}><Save size={13} /> Sauvegarder</Btn>}>
-      <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-        {labels.map((l, i) => (
-          <div key={l} style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <label style={{ fontSize:12, color:'#7a766f', width:220, flexShrink:0 }}>{l}</label>
-            <input value={vals[i]} onChange={e => setVals(v => v.map((x,j) => j===i ? e.target.value : x))}
-              style={{ flex:1, padding:'5px 8px', borderRadius:7, border:'0.5px solid #d0ccc5', fontSize:12, fontFamily:'inherit' }} />
-          </div>
-        ))}
-      </div>
+  const navigate = useNavigate()
+  const [configs, setConfigs]   = useState<CountryConfig[]>([])
+  const [loading, setLoading]   = useState(true)
+  const [saving,  setSaving]    = useState<string | null>(null)
+  const [drafts,  setDrafts]    = useState<Record<string, CountryConfig>>({})
+
+  useEffect(() => {
+    getAllCountryConfigs()
+      .then(data => {
+        setConfigs(data)
+        const d: Record<string, CountryConfig> = {}
+        data.forEach(c => { d[c.code] = { ...c } })
+        setDrafts(d)
+      })
+      .catch(() => onToast('Impossible de charger les configurations'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const handleSave = async (code: string) => {
+    const draft = drafts[code]
+    if (!draft) return
+    setSaving(code)
+    try {
+      const updated = await updateCountryConfig(code, {
+        ideal_temp:        draft.ideal_temp,
+        ideal_humidity:    draft.ideal_humidity,
+        tolerance_temp:    draft.tolerance_temp,
+        tolerance_humidity: draft.tolerance_humidity,
+      })
+      setConfigs(prev => prev.map(c => c.code === code ? updated : c))
+      setDrafts(prev => ({ ...prev, [code]: { ...updated } }))
+      onToast(`Configuration ${COUNTRY_NAMES[code]} sauvegardée ✓`)
+    } catch {
+      onToast('Erreur lors de la sauvegarde')
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  const set = (code: string, field: keyof CountryConfig, val: string) => {
+    const num = parseFloat(val)
+    if (isNaN(num)) return
+    setDrafts(prev => ({ ...prev, [code]: { ...prev[code], [field]: num } }))
+  }
+
+  if (loading) return (
+    <Card title="Configuration IoT par pays">
+      <div style={{ padding:'1rem', color:'#7a766f', fontSize:12 }}>Chargement…</div>
     </Card>
+  )
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
+      {configs.map(c => {
+        const d = drafts[c.code] ?? c
+        const fields: { label: string; field: keyof CountryConfig; unit: string }[] = [
+          { label: 'Température idéale',   field: 'ideal_temp',        unit: '°C' },
+          { label: 'Humidité idéale',      field: 'ideal_humidity',    unit: '%'  },
+          { label: 'Tolérance température',field: 'tolerance_temp',    unit: '±°C'},
+          { label: 'Tolérance humidité',   field: 'tolerance_humidity',unit: '±%' },
+        ]
+        return (
+          <Card key={c.code}
+            title={COUNTRY_NAMES[c.code] ?? c.code}
+            action={
+              <Btn primary onClick={() => handleSave(c.code)} key={saving}>
+                <Save size={13} /> {saving === c.code ? 'Sauvegarde…' : 'Sauvegarder'}
+              </Btn>
+            }>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              {fields.map(f => (
+                <div key={f.field}>
+                  <div style={{ fontSize:11, color:'#7a766f', marginBottom:3 }}>
+                    {f.label} <span style={{ opacity:.6 }}>({f.unit})</span>
+                  </div>
+                  <input
+                    type="number" step="0.1"
+                    value={d[f.field] as number}
+                    onChange={e => set(c.code, f.field, e.target.value)}
+                    style={{ width:'100%', padding:'6px 8px', fontSize:13, borderRadius:7,
+                      border:'0.5px solid #d0ccc5', fontFamily:'inherit', boxSizing:'border-box' }}
+                  />
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop:8, fontSize:11, color:'#7a766f', padding:'6px 10px',
+              background:'#f4f2ef', borderRadius:6 }}>
+              Alerte si temp. hors [{(d.ideal_temp - d.tolerance_temp).toFixed(1)}–{(d.ideal_temp + d.tolerance_temp).toFixed(1)}°C]
+              ou humidité hors [{(d.ideal_humidity - d.tolerance_humidity).toFixed(1)}–{(d.ideal_humidity + d.tolerance_humidity).toFixed(1)}%]
+            </div>
+          </Card>
+        )
+      })}
+      {configs.length === 0 && (
+        <Card title="Configuration IoT par pays">
+          <div style={{ padding:'1rem', color:'#7a766f', fontSize:12 }}>
+            Aucune configuration disponible.
+          </div>
+        </Card>
+      )}
+
+      {/* Bouton Nouveau pays */}
+      <button
+        onClick={() => navigate('/countries/new')}
+        style={{
+          display:'flex', alignItems:'center', gap:8,
+          padding:'10px 16px', borderRadius:10,
+          border:'1.5px dashed #d0ccc5', background:'transparent',
+          fontSize:13, color:'#7a766f', cursor:'pointer', fontFamily:'inherit',
+          width:'100%', justifyContent:'center', transition:'all .15s',
+        }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLButtonElement).style.borderColor = '#7a4528'
+          ;(e.currentTarget as HTMLButtonElement).style.color = '#7a4528'
+          ;(e.currentTarget as HTMLButtonElement).style.background = '#fdf6f0'
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLButtonElement).style.borderColor = '#d0ccc5'
+          ;(e.currentTarget as HTMLButtonElement).style.color = '#7a766f'
+          ;(e.currentTarget as HTMLButtonElement).style.background = 'transparent'
+        }}
+      >
+        <Plus size={14} /> Nouveau pays
+      </button>
+    </div>
   )
 }
 

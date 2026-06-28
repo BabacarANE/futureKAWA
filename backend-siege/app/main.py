@@ -10,6 +10,7 @@ from app.api.auth import router as auth_router
 from app.api.warehouses import router as warehouses_router
 from app.api.exploitations import router as exploitations_router
 from app.api.stats import router as stats_router
+from app.api.countries import router as countries_router
 
 app = FastAPI(
     title="FutureKawa API — Siège",
@@ -35,6 +36,7 @@ app.include_router(consolidated_router,  prefix="/consolidated",  tags=["consoli
 app.include_router(warehouses_router,    prefix="/warehouses",    tags=["warehouses"])
 app.include_router(exploitations_router, prefix="/exploitations", tags=["exploitations"])
 app.include_router(stats_router,         prefix="/stats",         tags=["stats"])
+app.include_router(countries_router,     prefix="/countries",     tags=["countries"])
 
 
 @app.get("/health")

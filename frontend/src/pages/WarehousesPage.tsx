@@ -25,6 +25,7 @@ export default function WarehousesPage() {
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState<string | null>(null)
   const [query,        setQuery]        = useState('')
+  const [activeTab,    setActiveTab]    = useState<string>('ALL')
   const [showCreate,   setShowCreate]   = useState(false)
   const [editTarget,   setEditTarget]   = useState<EnrichedWarehouse | null>(null)
   const [deleteId,     setDeleteId]     = useState<EnrichedWarehouse | null>(null)
@@ -102,15 +103,25 @@ export default function WarehousesPage() {
     }
   }
 
-  const filtered = warehouses.filter(w =>
-    w.name.toLowerCase().includes(query.toLowerCase()) ||
-    (w.country_code ?? '').toLowerCase().includes(query.toLowerCase()) ||
-    String(w.id).includes(query)
-  )
+  const COUNTRY_TABS = [
+    { code: 'ALL', label: 'Tous',      flag: '' },
+    { code: 'BR',  label: 'Brésil',   flag: '🇧🇷' },
+    { code: 'EC',  label: 'Équateur', flag: '🇪🇨' },
+    { code: 'CO',  label: 'Colombie', flag: '🇨🇴' },
+  ]
+
+  const filtered = warehouses.filter(w => {
+    const matchTab = activeTab === 'ALL' || (w.country_code ?? '').toUpperCase() === activeTab
+    const matchSearch =
+      w.name.toLowerCase().includes(query.toLowerCase()) ||
+      (w.country_code ?? '').toLowerCase().includes(query.toLowerCase()) ||
+      String(w.id).includes(query)
+    return matchTab && matchSearch
+  })
 
   return (
     <div className="space-y-6">
-      <header className="flex items-center justify-between">
+      <header className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-stone-900 dark:text-stone-100">Entrepôts</h1>
           <p className="text-sm text-stone-500 dark:text-stone-400">Gérer les entrepôts et suivre leur état</p>
@@ -133,6 +144,38 @@ export default function WarehousesPage() {
           </button>
         </div>
       </header>
+
+      {/* Onglets pays — visibles seulement pour siege/admin */}
+      {isSiege ? (
+        <div className="flex gap-2 border-b border-stone-200 dark:border-white/8 pb-1">
+          {COUNTRY_TABS.map(tab => {
+            const count = tab.code === 'ALL'
+              ? warehouses.length
+              : warehouses.filter(w => (w.country_code ?? '').toUpperCase() === tab.code).length
+            return (
+              <button key={tab.code} onClick={() => setActiveTab(tab.code)}
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm rounded-t-lg border-b-2 transition-colors ${
+                  activeTab === tab.code
+                    ? 'border-[#7a4528] text-[#7a4528] dark:text-amber-400 font-semibold'
+                    : 'border-transparent text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
+                }`}>
+                {tab.flag && <span>{tab.flag}</span>}
+                {tab.label}
+                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                  activeTab === tab.code
+                    ? 'bg-[#7a4528]/10 text-[#7a4528] dark:bg-amber-400/10 dark:text-amber-400'
+                    : 'bg-stone-100 dark:bg-white/8 text-stone-500 dark:text-stone-400'
+                }`}>{count}</span>
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-stone-100 dark:bg-white/8
+                        border border-stone-200 dark:border-white/10 text-sm text-stone-700 dark:text-stone-300">
+          {lockedCountry === 'BR' ? '🇧🇷 Brésil' : lockedCountry === 'EC' ? '🇪🇨 Équateur' : '🇨🇴 Colombie'}
+        </div>
+      )}
 
       {loading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

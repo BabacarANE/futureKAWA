@@ -11,16 +11,16 @@ import { useTheme } from '../context/ThemeContext'
 import { LOGO_B64 } from '../assets/logoBase64'
 
 const NAV_ITEMS = [
-  { to: '/',              label: 'Dashboard',      icon: LayoutDashboard, section: 'Operations', adminOnly: false },
-  { to: '/countries',     label: 'Countries',      icon: Globe2,          section: 'Operations', adminOnly: false },
-  { to: '/warehouses',    label: 'Warehouses',     icon: Warehouse,       section: 'Operations', adminOnly: false },
-  { to: '/lots',          label: 'Lots',           icon: Package,         section: 'Operations', adminOnly: false },
-  { to: '/iot',           label: 'IoT Monitoring', icon: Activity,        section: 'Operations', adminOnly: false },
-  { to: '/alerts',        label: 'Alerts',         icon: Bell,            section: 'Operations', adminOnly: false },
-  { to: '/analytics',     label: 'Analytics',      icon: BarChart3,       section: 'Operations', adminOnly: false },
-  { to: '/notifications', label: 'Notifications',  icon: Mail,            section: 'System',     adminOnly: false },
-  { to: '/admin',         label: 'Administration', icon: ShieldCheck,     section: 'System',     adminOnly: true  },
-  { to: '/settings',      label: 'Settings',       icon: Settings,        section: 'System',     adminOnly: false },
+  { to: '/',              label: 'Tableau de bord',  icon: LayoutDashboard, section: 'Operations', adminOnly: false },
+  { to: '/countries',     label: 'Pays',             icon: Globe2,          section: 'Operations', adminOnly: false },
+  { to: '/warehouses',    label: 'Entrepôts',        icon: Warehouse,       section: 'Operations', adminOnly: false },
+  { to: '/lots',          label: 'Lots',             icon: Package,         section: 'Operations', adminOnly: false },
+  { to: '/iot',           label: 'Surveillance IoT', icon: Activity,        section: 'Operations', adminOnly: false },
+  { to: '/alerts',        label: 'Alertes',          icon: Bell,            section: 'Operations', adminOnly: false },
+  { to: '/analytics',     label: 'Analytique',       icon: BarChart3,       section: 'Operations', adminOnly: false },
+  { to: '/notifications', label: 'Notifications',    icon: Mail,            section: 'Système',    adminOnly: false },
+  { to: '/admin',         label: 'Administration',   icon: ShieldCheck,     section: 'Système',    adminOnly: true  },
+  { to: '/settings',      label: 'Paramètres',       icon: Settings,        section: 'Système',    adminOnly: false },
 ]
 
 function getInitials(name?: string) {
@@ -238,7 +238,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
-          {['Operations', 'System'].map(section => (
+          {['Operations', 'Système'].map(section => (
             <div key={section}>
               {!collapsed && (
                 <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-widest text-stone-500">

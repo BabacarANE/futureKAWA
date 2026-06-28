@@ -4,9 +4,9 @@ import { Search, Plus, Thermometer, Droplets, Package, Warehouse, AlertTriangle,
 import CountrySelector from '../components/CountrySelector'
 import LotsTable from '../components/LotsTable'
 import NewLotModal from '../components/NewLotModal'
-import { getCountryLots, getCountryAlerts } from '../services/api'
+import { getCountryLots, getCountryAlerts, getWarehousesByCountry, getCountryMeasures } from '../services/api'
 import { useAuth } from '../context/AuthContext'
-import type { Lot, Alert } from '../types'
+import type { Lot, Alert, Measure } from '../types'
 import KpiCard from '../components/ui/KpiCard'
 import MiniChart from '../components/ui/MiniChart'
 import CountryIndicator from '../components/ui/CountryIndicator'
@@ -41,20 +41,31 @@ export default function DashboardPage() {
   const lockedCountry = isSiege ? null : (user?.country_code ?? 'BR')
   const initialCountry = lockedCountry ?? searchParams.get('country') ?? 'BR'
   const [country,   setCountry]   = useState(initialCountry)
-  const [lots,      setLots]      = useState<Lot[]>([])
-  const [alerts,    setAlerts]    = useState<Alert[]>([])
-  const [query,     setQuery]     = useState('')
-  const [loading,   setLoading]   = useState(false)
-  const [showModal, setShowModal] = useState(false)
+  const [lots,       setLots]       = useState<Lot[]>([])
+  const [alerts,     setAlerts]     = useState<Alert[]>([])
+  const [warehouses, setWarehouses] = useState<number>(0)
+  const [measures,   setMeasures]   = useState<Measure[]>([])
+  const [query,      setQuery]      = useState('')
+  const [loading,    setLoading]    = useState(false)
+  const [showModal,  setShowModal]  = useState(false)
+  
 
   const canCreateLot =
     user?.role === 'responsable_exploitation' || user?.role === 'responsable_entrepot'
 
   const fetchData = useCallback(() => {
     setLoading(true)
-    Promise.all([getCountryLots(country), getCountryAlerts(country)])
-      .then(([l, a]) => { setLots(l); setAlerts(a) })
-      .finally(() => setLoading(false))
+    Promise.allSettled([
+      getCountryLots(country),
+      getCountryAlerts(country),
+      getWarehousesByCountry(country),
+      getCountryMeasures(country),
+    ]).then(([lotsR, alertsR, whR, measR]) => {
+      if (lotsR.status  === 'fulfilled') setLots(lotsR.value)
+      if (alertsR.status === 'fulfilled') setAlerts(alertsR.value)
+      if (whR.status    === 'fulfilled') setWarehouses(whR.value.length)
+      if (measR.status  === 'fulfilled') setMeasures(measR.value)
+    }).finally(() => setLoading(false))
   }, [country])
 
   useEffect(() => { fetchData() }, [fetchData])
@@ -70,13 +81,28 @@ export default function DashboardPage() {
   }, [lots, query])
 
   const totalLots        = lots.length
-  const activeWarehouses = Array.from(new Set(lots.map(l => l.warehouse_id))).length
+  const activeWarehouses = warehouses
   const alertsCount      = alerts.length
   const expiringSoon     = lots.filter(l => l.status === 'expired').length
 
-  // Pas de mesures IoT pour l'instant — séries vides
-  const tempSeries: { label: string; value: number }[] = []
-  const humSeries:  { label: string; value: number }[] = []
+  // Séries IoT depuis les vraies mesures
+  const sortedMeasures = [...measures].sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  ).slice(-20)
+  const tempSeries = sortedMeasures.map(m => ({
+    label: new Date(m.timestamp).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' }),
+    value: m.temperature,
+  }))
+  const humSeries = sortedMeasures.map(m => ({
+    label: new Date(m.timestamp).toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' }),
+    value: m.humidity,
+  }))
+  const avgTemp = measures.length > 0
+    ? (measures.reduce((s, m) => s + m.temperature, 0) / measures.length).toFixed(1)
+    : null
+  const avgHum = measures.length > 0
+    ? (measures.reduce((s, m) => s + m.humidity, 0) / measures.length).toFixed(1)
+    : null
 
   // Stocks par entrepôt (lots chargés pour le pays sélectionné)
   const stockByWarehouse = useMemo(() => {
@@ -182,13 +208,13 @@ export default function DashboardPage() {
             title="Température moyenne"
             icon={<Thermometer size={16} />}
             value={
-              tempSeries.length > 0 ? (
+              avgTemp !== null ? (
                 <>
-                  <span className="text-2xl">{tempSeries[tempSeries.length - 1].value}°C</span>
-                  <MiniChart data={tempSeries.map(d => d.value)} color="#1F8A4D" />
+                  <span className="text-2xl">{avgTemp}°C</span>
+                  {tempSeries.length > 1 && <MiniChart data={tempSeries.map(d => d.value)} color="#ef4444" />}
                 </>
               ) : (
-                <span className="text-sm text-coffee-700/40 dark:text-coffee-200/35">Pas de capteur connecté</span>
+                <span className="text-sm text-coffee-700/40 dark:text-coffee-200/35">En attente IoT</span>
               )
             }
           />
@@ -196,13 +222,13 @@ export default function DashboardPage() {
             title="Humidité moyenne"
             icon={<Droplets size={16} />}
             value={
-              humSeries.length > 0 ? (
+              avgHum !== null ? (
                 <>
-                  <span className="text-2xl">{humSeries[humSeries.length - 1].value}%</span>
-                  <MiniChart data={humSeries.map(d => d.value)} color="#1F8A4D" />
+                  <span className="text-2xl">{avgHum}%</span>
+                  {humSeries.length > 1 && <MiniChart data={humSeries.map(d => d.value)} color="#3b82f6" />}
                 </>
               ) : (
-                <span className="text-sm text-coffee-700/40 dark:text-coffee-200/35">Pas de capteur connecté</span>
+                <span className="text-sm text-coffee-700/40 dark:text-coffee-200/35">En attente IoT</span>
               )
             }
           />
