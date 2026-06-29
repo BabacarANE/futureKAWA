@@ -18,6 +18,10 @@ services:
       TOLERANCE_TEMP: 3
       TOLERANCE_HUMIDITE: 2
       SECRET_KEY: changeme-secret-key
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
     depends_on:
       db-bresil:
         condition: service_healthy
@@ -68,6 +72,10 @@ services:
       TOLERANCE_TEMP: 3
       TOLERANCE_HUMIDITE: 2
       SECRET_KEY: changeme-secret-key
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
     depends_on:
       db-equateur:
         condition: service_healthy
@@ -118,6 +126,10 @@ services:
       TOLERANCE_TEMP: 3
       TOLERANCE_HUMIDITE: 2
       SECRET_KEY: changeme-secret-key
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
     depends_on:
       db-colombie:
         condition: service_healthy
