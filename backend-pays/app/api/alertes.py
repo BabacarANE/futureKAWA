@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime
@@ -7,6 +7,7 @@ from app.db.database import get_db
 from app.models.alert import Alert, AlertUser
 from app.models.user import User
 from app.api.auth import get_current_user
+from app.alerting.email import send_alert_email
 
 router = APIRouter()
 
@@ -43,6 +44,25 @@ def get_alert(
 ):
     alert = db.query(Alert).filter(Alert.id == alert_id).first()
     if not alert:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Alert not found")
     return alert
+
+@router.post("/test-email")
+def test_email(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role not in ["siege", "responsable_exploitation"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    recipients = [current_user.email]
+    success = send_alert_email(
+        recipients=recipients,
+        subject="[FutureKawa] Test email alerting",
+        body=f"Test email envoyé depuis l'API FutureKawa. "
+             f"Utilisateur : {current_user.name} ({current_user.email}). "
+             f"Système d'alerting opérationnel."
+    )
+    if success:
+        return {"status": "sent", "recipients": recipients}
+    return {"status": "skipped", "reason": "SMTP not configured"}
