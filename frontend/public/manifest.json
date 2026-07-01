@@ -1,0 +1,40 @@
+{
+  "name": "FutureKawa",
+  "short_name": "FutureKawa",
+  "description": "Système de suivi des stocks de café - Coffee Intelligence",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#5b2e1a",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/futurekawa-logo-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/futurekawa-logo-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/futurekawa-logo-full.svg",
+      "type": "image/svg+xml",
+      "sizes": "540x720",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/futurekawa-logo-full.svg",
+      "type": "image/svg+xml",
+      "sizes": "1280x720",
+      "form_factor": "wide"
+    }
+  ]
+}

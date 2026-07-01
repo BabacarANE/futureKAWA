@@ -1,0 +1,44 @@
+[33m908e895[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/frontendPage[m[33m, [m[1;31morigin/develop[m[33m, [m[1;32mdevelop[m[33m)[m HEAD@{0}: rebase (finish): returning to refs/heads/feature/frontendPage
+[33m908e895[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/frontendPage[m[33m, [m[1;31morigin/develop[m[33m, [m[1;32mdevelop[m[33m)[m HEAD@{1}: rebase (start): checkout origin/develop
+[33m40629ee[m HEAD@{2}: checkout: moving from develop to feature/frontendPage
+[33m908e895[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/frontendPage[m[33m, [m[1;31morigin/develop[m[33m, [m[1;32mdevelop[m[33m)[m HEAD@{3}: checkout: moving from feature/frontendPage to develop
+[33m40629ee[m HEAD@{4}: checkout: moving from develop to feature/frontendPage
+[33m908e895[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/frontendPage[m[33m, [m[1;31morigin/develop[m[33m, [m[1;32mdevelop[m[33m)[m HEAD@{5}: pull: Fast-forward
+[33ma46cb75[m[33m ([m[1;31morigin/feature/cicd[m[33m, [m[1;32mfeature/cicd[m[33m)[m HEAD@{6}: checkout: moving from main to develop
+[33me40f1bc[m[33m ([m[1;31morigin/main[m[33m, [m[1;32mmain[m[33m)[m HEAD@{7}: commit: docs: complete README with setup, ports, accounts, IoT and CI/CD
+[33ma46cb75[m[33m ([m[1;31morigin/feature/cicd[m[33m, [m[1;32mfeature/cicd[m[33m)[m HEAD@{8}: merge develop: Fast-forward
+[33m3a4f5be[m[33m ([m[1;31morigin/feature/auth[m[33m, [m[1;32mfeature/auth[m[33m)[m HEAD@{9}: checkout: moving from develop to main
+[33ma46cb75[m[33m ([m[1;31morigin/feature/cicd[m[33m, [m[1;32mfeature/cicd[m[33m)[m HEAD@{10}: merge feature/cicd: Fast-forward
+[33m98f2ae7[m[33m ([m[1;31morigin/feature/lot-management[m[33m, [m[1;32mfeature/lot-management[m[33m)[m HEAD@{11}: checkout: moving from feature/cicd to develop
+[33ma46cb75[m[33m ([m[1;31morigin/feature/cicd[m[33m, [m[1;32mfeature/cicd[m[33m)[m HEAD@{12}: commit: feat: cicd — Jenkinsfile, 15 unit tests passing, pytest config
+[33m98f2ae7[m[33m ([m[1;31morigin/feature/lot-management[m[33m, [m[1;32mfeature/lot-management[m[33m)[m HEAD@{13}: checkout: moving from develop to feature/cicd
+[33m98f2ae7[m[33m ([m[1;31morigin/feature/lot-management[m[33m, [m[1;32mfeature/lot-management[m[33m)[m HEAD@{14}: merge feature/lot-management: Fast-forward
+[33m3a4f5be[m[33m ([m[1;31morigin/feature/auth[m[33m, [m[1;32mfeature/auth[m[33m)[m HEAD@{15}: checkout: moving from feature/lot-management to develop
+[33m98f2ae7[m[33m ([m[1;31morigin/feature/lot-management[m[33m, [m[1;32mfeature/lot-management[m[33m)[m HEAD@{16}: commit: feat: lot management — manual form, CSV import, UTF-8 fix
+[33m3a4f5be[m[33m ([m[1;31morigin/feature/auth[m[33m, [m[1;32mfeature/auth[m[33m)[m HEAD@{17}: checkout: moving from develop to feature/lot-management
+[33m3a4f5be[m[33m ([m[1;31morigin/feature/auth[m[33m, [m[1;32mfeature/auth[m[33m)[m HEAD@{18}: checkout: moving from main to develop
+[33m3a4f5be[m[33m ([m[1;31morigin/feature/auth[m[33m, [m[1;32mfeature/auth[m[33m)[m HEAD@{19}: merge develop: Fast-forward
+[33m3f59c61[m HEAD@{20}: checkout: moving from develop to main
+[33m3a4f5be[m[33m ([m[1;31morigin/feature/auth[m[33m, [m[1;32mfeature/auth[m[33m)[m HEAD@{21}: merge feature/auth: Fast-forward
+[33m16df328[m[33m ([m[1;31morigin/feature/mqtt-alerting[m[33m, [m[1;32mfeature/mqtt-alerting[m[33m)[m HEAD@{22}: checkout: moving from feature/auth to develop
+[33m3a4f5be[m[33m ([m[1;31morigin/feature/auth[m[33m, [m[1;32mfeature/auth[m[33m)[m HEAD@{23}: commit: fix: add auth routes to backend-siege — login and me endpoints
+[33m16df328[m[33m ([m[1;31morigin/feature/mqtt-alerting[m[33m, [m[1;32mfeature/mqtt-alerting[m[33m)[m HEAD@{24}: checkout: moving from develop to feature/auth
+[33m16df328[m[33m ([m[1;31morigin/feature/mqtt-alerting[m[33m, [m[1;32mfeature/mqtt-alerting[m[33m)[m HEAD@{25}: merge feature/mqtt-alerting: Fast-forward
+[33mec2ac21[m HEAD@{26}: checkout: moving from feature/mqtt-alerting to develop
+[33m16df328[m[33m ([m[1;31morigin/feature/mqtt-alerting[m[33m, [m[1;32mfeature/mqtt-alerting[m[33m)[m HEAD@{27}: commit: feat: iot — firmware ESP8266, wiring doc, mock tests
+[33mec2ac21[m HEAD@{28}: checkout: moving from develop to feature/mqtt-alerting
+[33mec2ac21[m HEAD@{29}: merge feature/mqtt-alerting: Fast-forward
+[33m40629ee[m HEAD@{30}: checkout: moving from feature/mqtt-alerting to develop
+[33mec2ac21[m HEAD@{31}: commit: feat: mqtt alerting — bcrypt fix, seed script, measures and alerts working
+[33m82c9157[m HEAD@{32}: commit: feat: mqtt subscriber and alerting rules — email, expired lots, out of range
+[33m40629ee[m HEAD@{33}: checkout: moving from develop to feature/mqtt-alerting
+[33m40629ee[m HEAD@{34}: merge feature/frontendPage: Fast-forward
+[33m3f59c61[m HEAD@{35}: checkout: moving from feature/frontendPage to develop
+[33m40629ee[m HEAD@{36}: commit: feat: frontend pages — login, dashboard, lot detail, components
+[33m7fa6b07[m HEAD@{37}: commit: chore: add gitattributes to normalize line endings
+[33m3f59c61[m HEAD@{38}: checkout: moving from develop to feature/frontendPage
+[33m3f59c61[m HEAD@{39}: checkout: moving from main to develop
+[33m3f59c61[m HEAD@{40}: commit: feat: backend-siege — consolidated routes and country clients
+[33m9b32fbb[m HEAD@{41}: commit: feat: frontend base setup — vite, react, tailwind, routing, auth context
+[33m7408869[m HEAD@{42}: Branch: renamed refs/heads/master to refs/heads/main
+[33m7408869[m HEAD@{44}: commit (initial): feat: initial project structure and infrastructure

@@ -34,6 +34,26 @@
     border: 1px solid #f3f4f6;
     padding: 1.5rem;
   }
+  /* Responsive container helper */
+  .container-responsive {
+    max-width: 1100px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  /* Clickable rows */
+  .clickable-row { cursor: pointer; }
+  .clickable-row:focus { outline: 2px solid rgba(139,69,19,0.15); }
+  /* Modal animations */
+  .modal-enter { transform: translateY(6px) scale(.995); opacity: 0; }
+  .modal-enter-active { transform: translateY(0) scale(1); opacity: 1; transition: transform .18s ease, opacity .18s ease; }
+  .modal-exit { opacity: 1; }
+  .modal-exit-active { opacity: 0; transition: opacity .12s ease; }
+  /* Side panel */
+  .side-panel { transition: transform .2s ease, opacity .2s ease; }
+  /* small keyboard hint */
+  .kbd { display: inline-block; padding: 0.125rem 0.35rem; border-radius: 4px; background: #f3f4f6; font-size: 0.75rem; border: 1px solid #e5e7eb; }
   .badge-compliant {
     background-color: #dcfce7;
     color: #15803d;
@@ -58,4 +78,24 @@
     padding: 0.125rem 0.625rem;
     border-radius: 9999px;
   }
-}
+  
+  /* Logo styling - Ensures proper dimensions and centering */
+  img[src*="futurekawa-logo"],
+  img[alt*="FutureKawa"] {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain;
+  }
+  
+  /* Logo icon styling */
+  img[src*="futurekawa-logo-icon"] {
+    aspect-ratio: 1;
+  }
+  
+  /* Logo full-width styling */
+  img[src*="futurekawa-logo-full"],
+  img[src*="futurekawa-logo-vertical"] {
+    aspect-ratio: auto;
+  }}
+

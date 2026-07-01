@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="FutureKawa icon">
+  <defs>
+    <style>
+      .icon-dino { fill: #5b2e1a; }
+      .icon-cup { fill: #5b2e1a; }
+    </style>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="100" cy="100" r="95" fill="none" stroke="#5b2e1a" stroke-width="2" opacity="0.2"/>
+  
+  <!-- Coffee Cup (Left) -->
+  <g transform="translate(20, 60)">
+    <!-- Cup body -->
+    <path class="icon-cup" d="M15 15 L15 85 Q15 95 25 95 L75 95 Q85 95 85 85 L85 15 Z" stroke="#5b2e1a" stroke-width="1.5" fill="none"/>
+    <!-- Cup fill -->
+    <path class="icon-cup" d="M20 20 L20 85 Q20 90 25 90 L75 90 Q80 90 80 85 L80 20 Z" opacity="0.25"/>
+    <!-- Handle -->
+    <path class="icon-cup" d="M85 30 Q110 30 110 55 Q110 80 85 80" stroke="#5b2e1a" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <!-- Coffee steam -->
+    <path d="M28 10 Q28 3 35 0 Q42 -3 42 3" stroke="#8a6b5a" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.6"/>
+    <path d="M55 10 Q55 3 62 0 Q69 -3 69 3" stroke="#8a6b5a" stroke-width="2" fill="none" stroke-linecap="round" opacity="0.6"/>
+  </g>
+  
+  <!-- Dragon/Dinosaur Icon (Right) -->
+  <g transform="translate(100, 35)">
+    <!-- Head -->
+    <ellipse class="icon-dino" cx="30" cy="28" rx="22" ry="26"/>
+    <!-- Snout -->
+    <path class="icon-dino" d="M52 22 L70 20 Q76 20 76 26 Q76 32 70 33 L52 30 Z"/>
+    <!-- Eye 1 -->
+    <circle cx="35" cy="18" r="4" fill="white"/>
+    <circle cx="36" cy="17" r="2" fill="#5b2e1a"/>
+    <!-- Eye 2 -->
+    <circle cx="48" cy="12" r="3" fill="white" opacity="0.7"/>
+    <circle cx="49" cy="11" r="1.5" fill="#5b2e1a" opacity="0.7"/>
+    <!-- Nostrils -->
+    <circle cx="68" cy="23" r="2" fill="#3d1f14"/>
+    <circle cx="68" cy="30" r="2" fill="#3d1f14"/>
+    <!-- Horn/Spikes -->
+    <path class="icon-dino" d="M25 0 L22 -12 L28 -8 Z"/>
+    <path class="icon-dino" d="M38 -3 L35 -15 L41 -10 Z"/>
+    <path class="icon-dino" d="M50 0 L47 -12 L53 -8 Z"/>
+    <!-- Jaw detail -->
+    <path class="icon-dino" d="M10 48 Q30 58 50 53" stroke="#3d1f14" stroke-width="1.5" fill="none" opacity="0.4"/>
+    <!-- Spots/Texture -->
+    <ellipse cx="25" cy="35" rx="4" ry="5" fill="white" opacity="0.15"/>
+    <ellipse cx="38" cy="38" rx="3.5" ry="4.5" fill="white" opacity="0.15"/>
+    <ellipse cx="50" cy="32" rx="3" ry="4" fill="white" opacity="0.15"/>
+  </g>
+</svg>

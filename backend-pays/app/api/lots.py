@@ -78,6 +78,37 @@ def create_lot(
     db.refresh(lot)
     return lot
 
+class LotUpdate(BaseModel):
+    quality_notes: Optional[str] = None
+    status: Optional[str] = None
+    warehouse_id: Optional[int] = None
+
+@router.put("/{lot_id}", response_model=LotResponse)
+def update_lot(
+    lot_id: str,
+    payload: LotUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    lot = db.query(Lot).filter(Lot.id == lot_id).first()
+    if not lot:
+        raise HTTPException(status_code=404, detail="Lot not found")
+    allowed_statuses = ["compliant", "alert", "expired"]
+    if payload.status is not None:
+        if payload.status not in allowed_statuses:
+            raise HTTPException(status_code=400, detail=f"Status must be one of {allowed_statuses}")
+        lot.status = payload.status
+    if payload.quality_notes is not None:
+        lot.quality_notes = payload.quality_notes or None
+    if payload.warehouse_id is not None:
+        wh = db.query(Warehouse).filter(Warehouse.id == payload.warehouse_id).first()
+        if not wh:
+            raise HTTPException(status_code=404, detail="Warehouse not found")
+        lot.warehouse_id = payload.warehouse_id
+    db.commit()
+    db.refresh(lot)
+    return lot
+
 @router.patch("/{lot_id}/status")
 def update_lot_status(
     lot_id: str,
