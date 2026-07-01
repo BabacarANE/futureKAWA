@@ -76,3 +76,20 @@ export interface ConsolidatedCountry {
   alerts: Alert[]
   latest_measures: Measure[]
 }
+
+export interface AnalyticsMeasure extends Measure { country: string }
+export interface AnalyticsLot    extends Lot       { country: string }
+
+export interface AnalyticsData {
+  summary: {
+    total_lots: number
+    total_alerts: number
+    avg_temperature: number
+    avg_humidity: number
+    active_countries: number
+  }
+  lotsByCountry:    Record<string, number>
+  alertsByCountry:  Record<string, number>
+  allLots:          AnalyticsLot[]
+  allMeasures:      AnalyticsMeasure[]
+}

@@ -59,7 +59,16 @@ export default function ChartTempHumidity({ measures }: Props) {
     responsive: true,
     interaction: { mode: 'index' as const, intersect: false },
     plugins: {
-      legend: { position: 'top' as const },
+      legend: {
+        position: 'top' as const,
+        onClick: (_e: any, legendItem: any, legend: any) => {
+          const index = legendItem.datasetIndex
+          const chart = legend.chart
+          const meta = chart.getDatasetMeta(index)
+          meta.hidden = meta.hidden === null ? !chart.data.datasets[index].hidden : null
+          chart.update()
+        }
+      }
     },
     scales: {
       y: {

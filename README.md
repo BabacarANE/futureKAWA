@@ -54,7 +54,6 @@ Le premier lancement prend ~5 minutes (téléchargement des images).
 Après le premier lancement, exécute le seed sur chaque pays :
 
 ```bash
-docker cp backend-pays/app/db/seed.py futurekawa-api-bresil-1:/app/seed.py
 docker exec futurekawa-api-bresil-1 python //app/seed.py
 
 docker cp backend-pays/app/db/seed.py futurekawa-api-equateur-1:/app/seed.py
