@@ -41,7 +41,9 @@ CREATE TABLE IF NOT EXISTS lots (
     warehouse_id INTEGER NOT NULL REFERENCES warehouses(id),
     storage_date TIMESTAMP DEFAULT NOW(),
     status VARCHAR DEFAULT 'compliant',
-    quality_notes VARCHAR
+    quality_notes VARCHAR,
+    shipped_at TIMESTAMP,
+    shipped_by INTEGER REFERENCES users(id)
 );
 
 -- Measures
@@ -72,7 +74,7 @@ CREATE TABLE IF NOT EXISTS alert_users (
     PRIMARY KEY (alert_id, user_id)
 );
 
--- ─── Seed data ───────────────────────────────────────────────────────────────
+-- ─── Seed data ────────────────────────────────────────────────────────────────
 
 INSERT INTO countries (code, name, ideal_temp, ideal_humidity, tolerance_temp, tolerance_humidity)
 VALUES
@@ -83,9 +85,9 @@ ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO exploitations (name, country_code, city)
 VALUES
-    ('Exploitation Amazonie',  'BR', 'Manaus'),
-    ('Exploitation Andes',     'EC', 'Quito'),
-    ('Exploitation Cauca',     'CO', 'Popayan')
+    ('Exploitation Amazonie', 'BR', 'Manaus'),
+    ('Exploitation Andes',    'EC', 'Quito'),
+    ('Exploitation Cauca',    'CO', 'Popayan')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO warehouses (name, location, exploitation_id)
@@ -95,14 +97,9 @@ VALUES
     ('Entrepot Principal CO', 'Zone A', 3)
 ON CONFLICT DO NOTHING;
 
--- ─── USERS (mot de passe : futurekawa2024) ───────────────────────────────────
--- Les hashes bcrypt ci-dessous correspondent tous à "futurekawa2024"
--- Tous les backends (BR, EC, CO) reçoivent ce même init.sql,
--- donc tous ont le compte admin.siege + leur propre compte pays.
-
+-- ─── USERS (mot de passe : futurekawa2024) ────────────────────────────────────
 INSERT INTO users (name, email, hashed_password, role, country_code)
 VALUES
-    -- Compte siège — accès global (se connecte depuis n'importe quel backend)
     (
         'Admin Siege',
         'admin.siege@futurekawa.com',
@@ -110,7 +107,6 @@ VALUES
         'siege',
         NULL
     ),
-    -- Compte Brésil
     (
         'Admin Bresil',
         'admin.bresil@futurekawa.com',
@@ -118,7 +114,6 @@ VALUES
         'responsable_exploitation',
         'BR'
     ),
-    -- Compte Équateur
     (
         'Admin Equateur',
         'admin.equateur@futurekawa.com',
@@ -126,7 +121,6 @@ VALUES
         'responsable_exploitation',
         'EC'
     ),
-    -- Compte Colombie
     (
         'Admin Colombie',
         'admin.colombie@futurekawa.com',

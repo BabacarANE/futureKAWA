@@ -314,3 +314,27 @@ export const getConsolidatedHealth = async () => {
 }
 
 export default api
+// ════════════════════════════════════════════════════════════════════════════
+// LOT OPERATIONS — sortie / annulation / historique
+// ════════════════════════════════════════════════════════════════════════════
+
+export const shipLot = async (countryCode: string, lotId: string) => {
+  const { data } = await api.post(
+    `/consolidated/${countryCode}/lots/${encodeURIComponent(lotId)}/ship`
+  )
+  return data
+}
+
+export const unshipLot = async (countryCode: string, lotId: string) => {
+  const { data } = await api.post(
+    `/consolidated/${countryCode}/lots/${encodeURIComponent(lotId)}/unship`
+  )
+  return data
+}
+
+export const getLotsHistory = async (countryCode: string): Promise<Lot[]> => {
+  const { data } = await api.get<Lot[]>(
+    `/consolidated/${countryCode}/lots/history`
+  )
+  return data
+}

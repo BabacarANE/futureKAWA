@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime, timezone
@@ -25,17 +25,39 @@ class LotResponse(BaseModel):
     storage_date: datetime
     status: str
     quality_notes: Optional[str]
+    shipped_at: Optional[datetime]
+    shipped_by: Optional[int]
 
     class Config:
         from_attributes = True
 
+# ── Lots actifs (hors shipped) ──────────────────────────────
 @router.get("/", response_model=list[LotResponse])
 def get_lots(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return db.query(Lot).order_by(Lot.storage_date.asc()).all()
+    return (
+        db.query(Lot)
+        .filter(Lot.status != "shipped")
+        .order_by(Lot.storage_date.asc())
+        .all()
+    )
 
+# ── Historique (lots expédiés) ──────────────────────────────
+@router.get("/history", response_model=list[LotResponse])
+def get_lots_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return (
+        db.query(Lot)
+        .filter(Lot.status == "shipped")
+        .order_by(Lot.shipped_at.desc())
+        .all()
+    )
+
+# ── Détail lot ──────────────────────────────────────────────
 @router.get("/{lot_id}", response_model=LotResponse)
 def get_lot(
     lot_id: str,
@@ -47,21 +69,30 @@ def get_lot(
         raise HTTPException(status_code=404, detail="Lot not found")
     return lot
 
+# ── Créer lot ───────────────────────────────────────────────
 @router.post("/", response_model=LotResponse, status_code=status.HTTP_201_CREATED)
 def create_lot(
     payload: LotCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    existing = db.query(Lot).filter(Lot.id == payload.id).first()
-    if existing:
+    if current_user.role not in [
+        "responsable_exploitation", "responsable_entrepot", "siege"
+    ]:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    if db.query(Lot).filter(Lot.id == payload.id).first():
         raise HTTPException(status_code=409, detail="Lot ID already exists")
 
-    warehouse = db.query(Warehouse).filter(Warehouse.id == payload.warehouse_id).first()
+    warehouse = db.query(Warehouse).filter(
+        Warehouse.id == payload.warehouse_id
+    ).first()
     if not warehouse:
         raise HTTPException(status_code=404, detail="Warehouse not found")
 
-    exploitation = db.query(Exploitation).filter(Exploitation.id == payload.exploitation_id).first()
+    exploitation = db.query(Exploitation).filter(
+        Exploitation.id == payload.exploitation_id
+    ).first()
     if not exploitation:
         raise HTTPException(status_code=404, detail="Exploitation not found")
 
@@ -78,37 +109,56 @@ def create_lot(
     db.refresh(lot)
     return lot
 
-class LotUpdate(BaseModel):
-    quality_notes: Optional[str] = None
-    status: Optional[str] = None
-    warehouse_id: Optional[int] = None
-
-@router.put("/{lot_id}", response_model=LotResponse)
-def update_lot(
+# ── Expédier lot (sortie) ───────────────────────────────────
+@router.post("/{lot_id}/ship")
+def ship_lot(
     lot_id: str,
-    payload: LotUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    if current_user.role != "siege":
+        raise HTTPException(status_code=403, detail="Only siege users can ship lots")
+
     lot = db.query(Lot).filter(Lot.id == lot_id).first()
     if not lot:
         raise HTTPException(status_code=404, detail="Lot not found")
-    allowed_statuses = ["compliant", "alert", "expired"]
-    if payload.status is not None:
-        if payload.status not in allowed_statuses:
-            raise HTTPException(status_code=400, detail=f"Status must be one of {allowed_statuses}")
-        lot.status = payload.status
-    if payload.quality_notes is not None:
-        lot.quality_notes = payload.quality_notes or None
-    if payload.warehouse_id is not None:
-        wh = db.query(Warehouse).filter(Warehouse.id == payload.warehouse_id).first()
-        if not wh:
-            raise HTTPException(status_code=404, detail="Warehouse not found")
-        lot.warehouse_id = payload.warehouse_id
-    db.commit()
-    db.refresh(lot)
-    return lot
+    if lot.status == "shipped":
+        raise HTTPException(status_code=409, detail="Lot already shipped")
 
+    lot.status = "shipped"
+    lot.shipped_at = datetime.now(timezone.utc)
+    lot.shipped_by = current_user.id
+    db.commit()
+    return {
+        "id": lot_id,
+        "status": "shipped",
+        "shipped_at": lot.shipped_at,
+        "shipped_by": current_user.id.encode("utf-8").decode("utf-8")
+    }
+
+# ── Annuler sortie ──────────────────────────────────────────
+@router.post("/{lot_id}/unship")
+def unship_lot(
+    lot_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role != "siege":
+        raise HTTPException(status_code=403, detail="Only siege users can cancel shipments")
+
+    lot = db.query(Lot).filter(Lot.id == lot_id).first()
+    if not lot:
+        raise HTTPException(status_code=404, detail="Lot not found")
+    if lot.status != "shipped":
+        raise HTTPException(status_code=409, detail="Lot is not shipped")
+
+    lot.status = "compliant"
+    lot.shipped_at = None
+    lot.shipped_by = None
+    db.commit()
+    return {"id": lot_id, "status": "compliant"}
+
+# ── Modifier statut ─────────────────────────────────────────
 @router.patch("/{lot_id}/status")
 def update_lot_status(
     lot_id: str,
@@ -118,22 +168,26 @@ def update_lot_status(
 ):
     allowed = ["compliant", "alert", "expired"]
     if status not in allowed:
-        raise HTTPException(status_code=400, detail=f"Status must be one of {allowed}")
-
+        raise HTTPException(
+            status_code=400,
+            detail=f"Status must be one of {allowed}"
+        )
     lot = db.query(Lot).filter(Lot.id == lot_id).first()
     if not lot:
         raise HTTPException(status_code=404, detail="Lot not found")
-
     lot.status = status
     db.commit()
     return {"id": lot_id, "status": status}
 
+# ── Supprimer lot ───────────────────────────────────────────
 @router.delete("/{lot_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_lot(
     lot_id: str,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    if current_user.role not in ["siege", "responsable_exploitation"]:
+        raise HTTPException(status_code=403, detail="Not authorized")
     lot = db.query(Lot).filter(Lot.id == lot_id).first()
     if not lot:
         raise HTTPException(status_code=404, detail="Lot not found")

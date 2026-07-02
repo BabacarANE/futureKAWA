@@ -200,3 +200,76 @@ async def health_all(token: str = Depends(oauth2_scheme)):
         code: result or "unreachable"
         for code, result in zip(CLIENTS.keys(), results)
     }
+
+
+@router.post("/{country_code}/lots/{lot_id}/ship")
+async def ship_lot(
+    country_code: str,
+    lot_id: str,
+    token: str = Depends(oauth2_scheme)
+):
+    base_url = COUNTRY_URLS.get(country_code.upper())
+    if not base_url:
+        raise HTTPException(status_code=404, detail="Country not found")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            res = await client.post(
+                f"{base_url}/lots/{lot_id}/ship",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            if res.status_code == 200:
+                return res.json()
+            raise HTTPException(
+                status_code=res.status_code,
+                detail=res.json().get("detail", "Error shipping lot")
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.post("/{country_code}/lots/{lot_id}/unship")
+async def unship_lot(
+    country_code: str,
+    lot_id: str,
+    token: str = Depends(oauth2_scheme)
+):
+    base_url = COUNTRY_URLS.get(country_code.upper())
+    if not base_url:
+        raise HTTPException(status_code=404, detail="Country not found")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            res = await client.post(
+                f"{base_url}/lots/{lot_id}/unship",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            if res.status_code == 200:
+                return res.json()
+            raise HTTPException(
+                status_code=res.status_code,
+                detail=res.json().get("detail", "Error cancelling shipment")
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@router.get("/{country_code}/lots/history")
+async def get_lots_history(
+    country_code: str,
+    token: str = Depends(oauth2_scheme)
+):
+    base_url = COUNTRY_URLS.get(country_code.upper())
+    if not base_url:
+        raise HTTPException(status_code=404, detail="Country not found")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            res = await client.get(
+                f"{base_url}/lots/history",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            return res.json() if res.status_code == 200 else []
+    except Exception:
+        return []

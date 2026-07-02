@@ -10,9 +10,12 @@ class Lot(Base):
     exploitation_id = Column(Integer, ForeignKey("exploitations.id"), nullable=False)
     warehouse_id = Column(Integer, ForeignKey("warehouses.id"), nullable=False)
     storage_date = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    status = Column(String, default="compliant")  # compliant | alert | expired
+    status = Column(String, default="compliant")  # compliant | alert | expired | shipped
     quality_notes = Column(String, nullable=True)
+    shipped_at = Column(DateTime, nullable=True)
+    shipped_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     exploitation = relationship("Exploitation", back_populates="lots")
     warehouse = relationship("Warehouse", back_populates="lots")
     alerts = relationship("Alert", back_populates="lot")
+    shipped_by_user = relationship("User", foreign_keys=[shipped_by])
