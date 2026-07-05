@@ -1,4 +1,4 @@
-export type LotStatus = 'compliant' | 'alert' | 'expired'
+export type LotStatus = 'compliant' | 'alert' | 'expired' | 'shipped'
 export type AlertType = 'out_of_range' | 'expired_lot'
 export type UserRole =
   | 'responsable_exploitation'
@@ -37,6 +37,8 @@ export interface Lot {
   storage_date: string
   status: LotStatus
   quality_notes: string | null
+  shipped_at: string | null
+  shipped_by: number | null
 }
 
 export interface Measure {
@@ -75,21 +77,4 @@ export interface ConsolidatedCountry {
   lots: Lot[]
   alerts: Alert[]
   latest_measures: Measure[]
-}
-
-export interface AnalyticsMeasure extends Measure { country: string }
-export interface AnalyticsLot    extends Lot       { country: string }
-
-export interface AnalyticsData {
-  summary: {
-    total_lots: number
-    total_alerts: number
-    avg_temperature: number
-    avg_humidity: number
-    active_countries: number
-  }
-  lotsByCountry:    Record<string, number>
-  alertsByCountry:  Record<string, number>
-  allLots:          AnalyticsLot[]
-  allMeasures:      AnalyticsMeasure[]
 }
