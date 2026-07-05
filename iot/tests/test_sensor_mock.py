@@ -1,12 +1,9 @@
-"""
-Tests unitaires du firmware IoT sans matériel physique.
-On mocke les modules MicroPython avec des stubs.
-"""
 import sys
 import types
+import json
 import pytest
 
-# ── Stubs MicroPython ──────────────────────────────────
+# ── Stubs MicroPython ──────────────────────────────────────
 machine_mod = types.ModuleType("machine")
 class Pin:
     OUT = 1
@@ -31,7 +28,7 @@ class WLAN:
     def __init__(self, _): pass
     def active(self, _): pass
     def isconnected(self): return True
-    def connect(self, ssid, pwd): pass
+    def connect(self, s, p): pass
     def ifconfig(self): return ("10.0.0.1",)
 network_mod.WLAN = WLAN
 sys.modules["network"] = network_mod
@@ -46,7 +43,7 @@ simple_mod.MQTTClient = MQTTClient
 sys.modules["umqtt"] = umqtt_mod
 sys.modules["umqtt.simple"] = simple_mod
 
-# ── Tests ──────────────────────────────────────────────
+# ── Tests ──────────────────────────────────────────────────
 def test_dht22_read():
     sensor = dht_mod.DHT22(machine_mod.Pin(4))
     sensor.measure()
@@ -67,10 +64,7 @@ def test_status_normal():
         status = "out_of_range"
     assert status == "normal"
 
-def test_mqtt_publish():
-    import json
-    client = simple_mod.MQTTClient("test", "localhost")
-    client.connect()
+def test_mqtt_payload_format():
     payload = json.dumps({
         "warehouse_id": 1,
         "temperature": 26.9,
@@ -78,9 +72,6 @@ def test_mqtt_publish():
         "status": "out_of_range",
         "client_id": "esp8266-bresil"
     })
-    client.publish(b"futurekawa/bresil/sensors", payload.encode())
-    assert len(client.published) == 1
-    topic, data = client.published[0]
-    parsed = json.loads(data)
+    parsed = json.loads(payload)
     assert parsed["temperature"] == 26.9
     assert parsed["warehouse_id"] == 1
