@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Pencil, Trash2, Thermometer, Droplets, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
-import { getLot, getCountryMeasures, getCountryAlerts, deleteLot } from '../services/api'
+import { ArrowLeft, Pencil, Trash2, Thermometer, Droplets, AlertTriangle, CheckCircle, Clock, PackageCheck, Undo2 } from 'lucide-react'
+import { getLot, getCountryMeasures, getCountryAlerts, deleteLot, shipLot, unshipLot } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 import LotEditModal from '../components/LotEditModal'
 import type { Lot, Measure, Alert } from '../types'
 
@@ -9,6 +10,7 @@ const STATUS_CONFIG = {
   compliant: { label: 'Conforme',  cls: 'bg-emerald-50 text-emerald-700 border-emerald-200',  icon: CheckCircle },
   alert:     { label: 'Alerte',    cls: 'bg-amber-50  text-amber-700  border-amber-200',       icon: AlertTriangle },
   expired:   { label: 'Expiré',    cls: 'bg-red-50    text-red-700    border-red-200',         icon: Clock },
+  shipped:   { label: 'Expédié',   cls: 'bg-blue-50   text-blue-700   border-blue-200',        icon: PackageCheck },
 }
 
 function MiniSparkline({ values, color }: { values: number[]; color: string }) {
@@ -32,6 +34,8 @@ function MiniSparkline({ values, color }: { values: number[]; color: string }) {
 export default function LotDetailPage() {
   const { country = 'BR', id: lotId = '' } = useParams<{ country: string; id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const isSiege = user?.role === 'siege' || user?.role === 'admin'
 
   const [lot,      setLot]      = useState<Lot | null>(null)
   const [measures, setMeasures] = useState<Measure[]>([])
@@ -40,6 +44,7 @@ export default function LotDetailPage() {
   const [error,    setError]    = useState('')
   const [editing,  setEditing]  = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [shipping, setShipping] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   const load = async () => {
@@ -71,6 +76,32 @@ export default function LotDetailPage() {
       alert(err?.response?.data?.detail ?? 'Erreur lors de la suppression')
     } finally {
       setDeleting(false)
+    }
+  }
+
+  const handleShip = async () => {
+    if (!lot || !confirm(`Confirmer l'expédition du lot ${lot.id} ?`)) return
+    setShipping(true)
+    try {
+      await shipLot(country, lot.id)
+      await load()
+    } catch (err: any) {
+      alert(err?.response?.data?.detail ?? 'Erreur lors de l\'expédition')
+    } finally {
+      setShipping(false)
+    }
+  }
+
+  const handleUnship = async () => {
+    if (!lot || !confirm(`Annuler l'expédition du lot ${lot.id} ?`)) return
+    setShipping(true)
+    try {
+      await unshipLot(country, lot.id)
+      await load()
+    } catch (err: any) {
+      alert(err?.response?.data?.detail ?? 'Erreur lors de l\'annulation')
+    } finally {
+      setShipping(false)
     }
   }
 
@@ -110,14 +141,12 @@ export default function LotDetailPage() {
   return (
     <div className="space-y-5 max-w-5xl">
 
-      {/* Breadcrumb */}
       <button onClick={() => navigate('/lots')}
         className="flex items-center gap-2 text-sm text-stone-500 dark:text-stone-400
                    hover:text-stone-800 dark:hover:text-stone-200 transition-colors">
         <ArrowLeft size={15} /> Retour aux lots
       </button>
 
-      {/* Header card */}
       <div className="bg-white dark:bg-[#1c1a17] rounded-2xl border border-stone-100 dark:border-white/10 p-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -131,6 +160,11 @@ export default function LotDetailPage() {
               <span>{lot.storage_date ? new Date(lot.storage_date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : '—'}</span>
               {age !== null && <><span>·</span><span>{age} jour{age > 1 ? 's' : ''} de stockage</span></>}
             </div>
+            {lot.shipped_at && (
+              <p className="mt-2 text-sm text-blue-600 dark:text-blue-400">
+                📦 Expédié le {new Date(lot.shipped_at).toLocaleDateString('fr-FR')}
+              </p>
+            )}
             {lot.quality_notes && (
               <p className="mt-3 text-sm text-stone-600 dark:text-stone-300 bg-stone-50 dark:bg-white/5
                             rounded-lg px-3 py-2 border border-stone-100 dark:border-white/8 max-w-lg">
@@ -143,24 +177,44 @@ export default function LotDetailPage() {
               <StatusIcon size={13} />
               {statusCfg.label}
             </span>
-            <button onClick={() => setEditing(true)} title="Modifier"
-              className="h-9 w-9 flex items-center justify-center rounded-lg border border-stone-200 dark:border-white/10
-                         text-stone-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors">
-              <Pencil size={15} />
-            </button>
-            <button onClick={() => setConfirmDelete(true)} title="Supprimer"
-              className="h-9 w-9 flex items-center justify-center rounded-lg border border-stone-200 dark:border-white/10
-                         text-stone-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
-              <Trash2 size={15} />
-            </button>
+            {lot.status !== 'shipped' && (
+              <button onClick={() => setEditing(true)} title="Modifier"
+                className="h-9 w-9 flex items-center justify-center rounded-lg border border-stone-200 dark:border-white/10
+                           text-stone-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors">
+                <Pencil size={15} />
+              </button>
+            )}
+            {lot.status !== 'shipped' && (
+              <button onClick={() => setConfirmDelete(true)} title="Supprimer"
+                className="h-9 w-9 flex items-center justify-center rounded-lg border border-stone-200 dark:border-white/10
+                           text-stone-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+                <Trash2 size={15} />
+              </button>
+            )}
+            {isSiege && lot.status !== 'shipped' && (
+              <button onClick={handleShip} disabled={shipping} title="Expédier"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200
+                           text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30
+                           transition-colors disabled:opacity-50 text-sm font-medium">
+                <PackageCheck size={15} />
+                {shipping ? 'En cours…' : 'Expédier'}
+              </button>
+            )}
+            {isSiege && lot.status === 'shipped' && (
+              <button onClick={handleUnship} disabled={shipping} title="Annuler l'expédition"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200
+                           text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30
+                           transition-colors disabled:opacity-50 text-sm font-medium">
+                <Undo2 size={15} />
+                {shipping ? 'En cours…' : 'Annuler expédition'}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Données IoT */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-        {/* Température */}
         <div className="bg-white dark:bg-[#1c1a17] rounded-2xl border border-stone-100 dark:border-white/10 p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-stone-700 dark:text-stone-200">
@@ -187,7 +241,6 @@ export default function LotDetailPage() {
           }
         </div>
 
-        {/* Humidité */}
         <div className="bg-white dark:bg-[#1c1a17] rounded-2xl border border-stone-100 dark:border-white/10 p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-stone-700 dark:text-stone-200">
@@ -248,7 +301,7 @@ export default function LotDetailPage() {
         }
       </div>
 
-      {/* Dernières mesures (tableau) */}
+      {/* Historique mesures */}
       {measures.length > 0 && (
         <div className="bg-white dark:bg-[#1c1a17] rounded-2xl border border-stone-100 dark:border-white/10 overflow-hidden">
           <div className="px-5 py-4 border-b border-stone-100 dark:border-white/10">

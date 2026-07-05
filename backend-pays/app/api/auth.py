@@ -105,7 +105,7 @@ def create_user(
     db: Session = Depends(get_db),
 ):
     if current_user.role not in ("siege", "admin"):
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=403, detail="Admin privileges required")
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Email déjà utilisé")
     user = User(
@@ -133,7 +133,7 @@ def delete_user(
     db: Session = Depends(get_db),
 ):
     if current_user.role != "siege":
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=403, detail="Admin privileges required")
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
@@ -141,3 +141,49 @@ def delete_user(
         raise HTTPException(status_code=400, detail="Cannot delete yourself")
     db.delete(target)
     db.commit()
+
+
+class UserUpdate(BaseModel):
+    name: str | None = None
+    role: str | None = None
+    country_code: str | None = None
+
+ROLES = [
+    "responsable_exploitation",
+    "responsable_entrepot",
+    "qualite",
+    "supply_chain",
+    "siege"
+]
+
+@router.get("/roles")
+def get_roles(current_user: User = Depends(get_current_user)):
+    return {"roles": ROLES}
+
+@router.put("/users/{user_id}")
+def update_user(
+    user_id: int,
+    payload: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if current_user.role not in ("siege", "admin"):
+        raise HTTPException(status_code=403, detail="Admin privileges required")
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if payload.name is not None:
+        user.name = payload.name
+    if payload.role is not None:
+        user.role = payload.role
+    if payload.country_code is not None:
+        user.country_code = payload.country_code
+    db.commit()
+    db.refresh(user)
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "role": user.role,
+        "country_code": user.country_code,
+    }

@@ -99,3 +99,12 @@
     aspect-ratio: auto;
   }}
 
+
+  .badge-shipped {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+  }

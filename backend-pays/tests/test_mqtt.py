@@ -1,7 +1,6 @@
 import pytest
 import json
 from unittest.mock import MagicMock, patch
-from app.alerting.rules import check_measure_alerts
 from app.models.measure import Measure
 from app.models.warehouse import Warehouse
 from app.models.country import Country
@@ -64,15 +63,23 @@ def test_mqtt_payload_format():
 
 def test_check_measure_alerts_called():
     db = MagicMock()
-    db.query.return_value.filter.return_value.all.return_value = []
-    measure = Measure()
-    measure.id = 1
-    measure.temperature = 35.0
-    measure.humidity = 70.0
-    measure.warehouse_id = 1
-    measure.status = "out_of_range"
-    warehouse = make_warehouse()
-    country = make_country()
-    with patch('app.alerting.rules.send_alert_email') as mock_email:
+    # Mock has_recent_alert pour retourner False (pas de cooldown)
+    with patch('app.alerting.rules.has_recent_alert', return_value=False), \
+         patch('app.alerting.rules.send_alert_email') as mock_email, \
+         patch('app.alerting.rules.get_warehouse_responsibles', return_value=[]):
+
+        from app.alerting.rules import check_measure_alerts
+
+        measure = Measure()
+        measure.id = 1
+        measure.temperature = 35.0
+        measure.humidity = 70.0
+        measure.warehouse_id = 1
+        measure.status = "out_of_range"
+        measure.timestamp = None
+
+        warehouse = make_warehouse()
+        country = make_country()
+
         check_measure_alerts(db, measure, warehouse, country)
         assert db.add.called
