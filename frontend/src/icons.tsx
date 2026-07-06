@@ -107,4 +107,23 @@ export const Sun = ({ size = 18, className = '' }: IconProps) => (
   </svg>
 )
 
+export const Users = ({ size = 18, className = '' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg">
+    <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <circle cx="19" cy="7" r="3" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <path d="M22 21v-1.5a3 3 0 0 0-2-2.83" stroke="currentColor" strokeWidth="1.5" fill="none" />
+  </svg>
+)
+
+export const Truck = ({ size = 18, className = '' }: IconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" className={className} xmlns="http://www.w3.org/2000/svg">
+    <rect x="1" y="3" width="15" height="11" rx="1" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <path d="M16 8h4l3 4v4h-7V8z" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <circle cx="5.5" cy="18.5" r="2.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <circle cx="18.5" cy="18.5" r="2.5" stroke="currentColor" strokeWidth="1.5" fill="none" />
+    <path d="M8 18.5H16" stroke="currentColor" strokeWidth="1" />
+  </svg>
+)
+
 export default {}

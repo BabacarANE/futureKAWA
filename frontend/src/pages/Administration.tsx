@@ -38,7 +38,7 @@ function Toast({ msg, onClose }: { msg: string; onClose: () => void }) {
   useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t) }, [onClose])
   return (
     <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999,
-      background:'#1a2e1a', color:'#fff', padding:'10px 16px', borderRadius:10,
+      background:'#4a2810', color:'#fff', padding:'10px 16px', borderRadius:10,
       fontSize:13, display:'flex', alignItems:'center', gap:10, boxShadow:'0 4px 20px rgba(0,0,0,.2)' }}>
       <Check size={14} /> {msg}
       <button onClick={onClose} style={{ border:'none', background:'none', color:'#fff', cursor:'pointer' }}>
@@ -80,8 +80,8 @@ function Btn({ children, primary, danger, small, onClick, disabled }: {
     padding: small ? '3px 8px' : '5px 12px', borderRadius:7,
     fontSize: small ? 11 : 12, cursor: disabled ? 'not-allowed' : 'pointer',
     fontFamily:'inherit', opacity: disabled ? .5 : 1,
-    border: danger ? '0.5px solid #F09595' : primary ? '0.5px solid #1a2e1a' : '0.5px solid #d0ccc5',
-    background: danger ? '#FCEBEB' : primary ? '#1a2e1a' : '#fff',
+    border: danger ? '0.5px solid #F09595' : primary ? '0.5px solid #4a2810' : '0.5px solid #d0ccc5',
+    background: danger ? '#FCEBEB' : primary ? '#4a2810' : '#fff',
     color: danger ? '#A32D2D' : primary ? '#fff' : '#1c1a17',
   }}>{children}</button>
 }
@@ -241,7 +241,7 @@ function PermissionsSection({ onToast }: { onToast: (m: string) => void }) {
                 <div key={ci} style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:4 }}>
                   <button onClick={() => toggle(ri,ci)} style={{
                     width:16, height:16, borderRadius:4, cursor: ci===0?'default':'pointer',
-                    background: on ? '#1a2e1a' : 'transparent',
+                    background: on ? '#4a2810' : 'transparent',
                     border: on ? 'none' : '1.5px solid #d0ccc5',
                     display:'flex', alignItems:'center', justifyContent:'center',
                   }}>
@@ -708,7 +708,7 @@ export default function AdministrationPage() {
                   display:'flex', alignItems:'center', gap:8, padding:'7px 10px',
                   borderRadius:7, fontSize:12, cursor:'pointer',
                   color: isActive ? '#fff' : '#7a766f', border:'none',
-                  background: isActive ? '#1a2e1a' : 'transparent', fontFamily:'inherit',
+                  background: isActive ? '#4a2810' : 'transparent', fontFamily:'inherit',
                   width:'100%', textAlign:'left', transition:'all .12s',
                 }}
                   onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background='#e8e4dc'; e.currentTarget.style.color='#1c1a17' } }}

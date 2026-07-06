@@ -90,7 +90,7 @@ export default function ForecastChart({ data, loading, range, country }: Props) 
           {
             label: 'Réel',
             data: [...cumul, ...Array(FC_N).fill(null)],
-            borderColor: '#1a2e1a', borderWidth: 2,
+            borderColor: '#4a2810', borderWidth: 2,
             pointRadius: 3, tension: 0.3, spanGaps: false,
           },
           {
@@ -138,7 +138,7 @@ export default function ForecastChart({ data, loading, range, country }: Props) 
       </div>
       <div className="flex gap-4 mb-3">
         <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-stone-400">
-          <span className="w-4 h-0.5 bg-[#1a2e1a] inline-block" /> Réel
+          <span className="w-4 h-0.5 bg-[#4a2810] inline-block" /> Réel
         </span>
         <span className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-stone-400">
           <span className="w-4 border-t border-dashed border-[#BA7517] inline-block" /> Prévision

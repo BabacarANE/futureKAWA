@@ -94,8 +94,8 @@ function FilterButton({
       onClick={onClick}
       style={{
         padding: "5px 14px", borderRadius: 999,
-        border: active ? "0.5px solid #1a2e1a" : "0.5px solid #d0ccc5",
-        background: active ? "#1a2e1a" : "#fff",
+        border: active ? "0.5px solid #4a2810" : "0.5px solid #d0ccc5",
+        background: active ? "#4a2810" : "#fff",
         color: active ? "#fff" : "#5a5650",
         fontSize: 11, cursor: "pointer",
         display: "flex", alignItems: "center", gap: 5,
@@ -132,14 +132,14 @@ function NotificationCard({
       style={{
         background: "#fff",
         border: "0.5px solid #e0ddd7",
-        borderLeft: notif.unread ? "3px solid #1a2e1a" : "0.5px solid #e0ddd7",
+        borderLeft: notif.unread ? "3px solid #4a2810" : "0.5px solid #e0ddd7",
         borderRadius: 10, padding: "1rem",
         display: "flex", gap: 12, transition: "border-color .12s",
       }}
     >
       <div style={{ width: 7, flexShrink: 0, marginTop: 4 }}>
         {notif.unread && (
-          <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#1a2e1a" }} />
+          <div style={{ width: 7, height: 7, borderRadius: "50%", background: "#4a2810" }} />
         )}
       </div>
 
@@ -174,7 +174,7 @@ function NotificationCard({
             onClick={() => onDismiss(notif.id)}
             style={{
               fontSize: 11, padding: "3px 10px", borderRadius: 6,
-              border: "0.5px solid #1a2e1a", background: "#1a2e1a",
+              border: "0.5px solid #4a2810", background: "#4a2810",
               color: "#fff", cursor: "pointer", fontFamily: "inherit",
             }}
           >

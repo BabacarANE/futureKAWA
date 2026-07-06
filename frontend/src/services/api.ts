@@ -313,4 +313,143 @@ export const getConsolidatedHealth = async () => {
   return data
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// CLIENTS
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface Client {
+  id:           number
+  name:         string
+  company:      string | null
+  email:        string | null
+  phone:        string | null
+  address:      string | null
+  notes:        string | null
+  country_code?: string
+}
+
+export const getAllClients = async (): Promise<Client[]> => {
+  const { data } = await api.get<Client[]>('/clients/')
+  return data
+}
+
+export const getCountryClients = async (countryCode: string): Promise<Client[]> => {
+  const { data } = await api.get<Client[]>(`/clients/${countryCode}`)
+  return data
+}
+
+export const createClient = async (
+  countryCode: string,
+  payload: Omit<Client, 'id' | 'country_code'>
+): Promise<Client> => {
+  const { data } = await api.post<Client>(`/clients/${countryCode}`, payload)
+  return data
+}
+
+export const updateClient = async (
+  countryCode: string,
+  clientId: number,
+  payload: Partial<Omit<Client, 'id' | 'country_code'>>
+): Promise<Client> => {
+  const { data } = await api.put<Client>(`/clients/${countryCode}/${clientId}`, payload)
+  return data
+}
+
+export const deleteClient = async (countryCode: string, clientId: number): Promise<void> => {
+  await api.delete(`/clients/${countryCode}/${clientId}`)
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// EXPEDITIONS
+// ════════════════════════════════════════════════════════════════════════════
+
+export interface Expedition {
+  id:                 number
+  lot_id:             string
+  country_code?:      string
+  client_id:          number | null
+  client:             { id: number; name: string; company: string | null; email: string | null } | null
+  destination:        string
+  carrier:            string | null
+  tracking_number:    string | null
+  status:             'en_route' | 'livre' | 'annule'
+  notes:              string | null
+  shipped_at:         string
+  estimated_arrival:  string | null
+  delivered_at:       string | null
+}
+
+export const getAllExpeditions = async (): Promise<Expedition[]> => {
+  const { data } = await api.get<Expedition[]>('/expeditions/')
+  return data
+}
+
+export const getCountryExpeditions = async (countryCode: string): Promise<Expedition[]> => {
+  const { data } = await api.get<Expedition[]>(`/expeditions/${countryCode}`)
+  return data
+}
+
+export const createExpedition = async (
+  countryCode: string,
+  payload: {
+    lot_id:            string
+    client_id?:        number | null
+    destination:       string
+    carrier?:          string | null
+    tracking_number?:  string | null
+    estimated_arrival?: string | null
+    notes?:            string | null
+  }
+): Promise<Expedition> => {
+  const { data } = await api.post<Expedition>(`/expeditions/${countryCode}`, payload)
+  return data
+}
+
+export const updateExpedition = async (
+  countryCode: string,
+  expeditionId: number,
+  payload: Partial<{
+    client_id:         number | null
+    destination:       string
+    carrier:           string | null
+    tracking_number:   string | null
+    status:            string
+    estimated_arrival: string | null
+    delivered_at:      string | null
+    notes:             string | null
+  }>
+): Promise<Expedition> => {
+  const { data } = await api.put<Expedition>(`/expeditions/${countryCode}/${expeditionId}`, payload)
+  return data
+}
+
+export const cancelExpedition = async (countryCode: string, expeditionId: number): Promise<void> => {
+  await api.delete(`/expeditions/${countryCode}/${expeditionId}`)
+}
+
+// shipLot / unshipLot — compatibilité LotsPage (délèguent à expeditions)
+export const getLotsHistory = async (countryCode: string): Promise<Lot[]> => {
+  const { data } = await api.get<Lot[]>(`/consolidated/${countryCode}/lots`, {
+    params: { status: 'shipped' },
+  })
+  return data
+}
+
+export const shipLot = async (countryCode: string, lotId: string): Promise<void> => {
+  // Expédition minimale sans détails (depuis le bouton rapide de LotsPage)
+  await api.post(`/expeditions/${countryCode}`, {
+    lot_id: lotId,
+    destination: 'À définir',
+  })
+}
+
+export const unshipLot = async (countryCode: string, lotId: string): Promise<void> => {
+  // Récupère l'expédition du lot puis l'annule
+  const exps = await getCountryExpeditions(countryCode)
+  const exp = exps.find(e => e.lot_id === lotId)
+  if (exp) {
+    await cancelExpedition(countryCode, exp.id)
+  }
+}
+
 export default api

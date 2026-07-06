@@ -109,7 +109,7 @@ export default function AlertRow({
         </button>
         <button
           onClick={() => onResolve?.(alert)}
-          className="flex-1 px-3 py-1.5 text-[12px] rounded-lg bg-[#1a2e1a] hover:bg-[#0f2010] text-white transition"
+          className="flex-1 px-3 py-1.5 text-[12px] rounded-lg bg-[#4a2810] hover:bg-[#3d1f0f] text-white transition"
         >
           Résoudre
         </button>

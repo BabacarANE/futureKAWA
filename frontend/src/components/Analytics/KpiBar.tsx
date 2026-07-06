@@ -3,7 +3,7 @@ import type { AnalyticsData } from '../../types'
 type Props = { data: AnalyticsData | null; loading: boolean }
 
 const ITEMS = [
-  { key: 'total_lots',      icon: '📦', label: 'Stocks total',     unit: '',   color: 'text-[#1a2e1a] dark:text-emerald-400' },
+  { key: 'total_lots',      icon: '📦', label: 'Stocks total',     unit: '',   color: 'text-[#4a2810] dark:text-emerald-400' },
   { key: 'avg_temperature', icon: '🌡', label: 'Temp. moyenne',    unit: '°C', color: 'text-orange-600 dark:text-orange-400' },
   { key: 'avg_humidity',    icon: '💧', label: 'Humidité moyenne', unit: '%',  color: 'text-sky-600 dark:text-sky-400'       },
   { key: 'total_alerts',    icon: '⚠', label: 'Alertes actives',  unit: '',   color: 'text-red-600 dark:text-red-400'       },

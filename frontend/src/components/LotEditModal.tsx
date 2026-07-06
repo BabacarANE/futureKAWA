@@ -131,7 +131,7 @@ export default function LotEditModal({ lot, countryCode, onClose, onUpdated }: P
               Annuler
             </button>
             <button type="submit" disabled={loading}
-              className="flex-1 bg-[#1a2e1a] hover:bg-[#0f2010] text-white font-medium
+              className="flex-1 bg-[#4a2810] hover:bg-[#3d1f0f] text-white font-medium
                          py-2.5 rounded-lg disabled:opacity-50 transition-colors">
               {loading ? 'Enregistrement…' : 'Enregistrer'}
             </button>

@@ -6,6 +6,8 @@ from app.db.database import engine, Base, SessionLocal
 from app.config import get_settings
 from app.api import lots, mesures, alertes, auth, countries
 from app.api.warehouses import router as warehouses_router
+from app.api.expeditions import router as expeditions_router
+from app.api.clients import router as clients_router
 from app.mqtt.subscriber import start_mqtt_client
 from app.alerting.rules import check_expired_lots
 from app.db.seed import seed   # ← import du seed
@@ -81,8 +83,10 @@ app.include_router(auth.router,       prefix="/auth",      tags=["auth"])
 app.include_router(lots.router,       prefix="/lots",      tags=["lots"])
 app.include_router(mesures.router,    prefix="/measures",  tags=["measures"])
 app.include_router(alertes.router,    prefix="/alerts",    tags=["alerts"])
-app.include_router(countries.router,  prefix="/countries", tags=["countries"])
-app.include_router(warehouses_router,                      tags=["warehouses"])
+app.include_router(countries.router,     prefix="/countries",    tags=["countries"])
+app.include_router(warehouses_router,                                           tags=["warehouses"])
+app.include_router(expeditions_router,   prefix="/expeditions",  tags=["expeditions"])
+app.include_router(clients_router,       prefix="/clients",      tags=["clients"])
 
 
 @app.get("/health")
