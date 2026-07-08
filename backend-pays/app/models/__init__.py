@@ -5,3 +5,5 @@ from .warehouse import Warehouse
 from .lot import Lot
 from .measure import Measure
 from .alert import Alert, AlertUser
+from .client import Client
+from .expedition import Expedition
