@@ -20,6 +20,8 @@ import WarehouseHistoryPage from './src/pages/WarehouseHistoryPage'
 
 import LotsPage from './src/pages/LotsPage'
 import LotDetailPage from './src/pages/LotDetailPage'
+import ExpeditionsPage from './src/pages/ExpeditionsPage'
+import ClientsPage from './src/pages/ClientsPage'
 
 import RealtimePage from './src/pages/RealtimePage'
 import SupervisionPage from './src/pages/SupervisionPage'
@@ -77,6 +79,8 @@ function AppRoutes() {
 
       <Route path="/lots"                element={<ProtectedLayout><LotsPage /></ProtectedLayout>} />
       <Route path="/lots/:country/:id"  element={<ProtectedLayout><LotDetailPage /></ProtectedLayout>} />
+      <Route path="/expeditions"         element={<ProtectedLayout><ExpeditionsPage /></ProtectedLayout>} />
+      <Route path="/clients"             element={<ProtectedLayout><ClientsPage /></ProtectedLayout>} />
 
       <Route path="/iot"        element={<ProtectedLayout><RealtimePage /></ProtectedLayout>} />
       <Route path="/alerts"     element={<ProtectedLayout><SupervisionPage /></ProtectedLayout>} />

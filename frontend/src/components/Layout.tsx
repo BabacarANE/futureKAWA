@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Globe2, Warehouse, Package, Activity,
   Bell, BarChart3, Mail, ShieldCheck, Settings, LogOut,
-  PanelLeft, Search, Moon, Sun,
+  PanelLeft, Search, Moon, Sun, Truck, Users,
 } from '../icons'
 import { ChevronDown, User, AlertTriangle, Info } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -15,6 +15,8 @@ const NAV_ITEMS = [
   { to: '/countries',     label: 'Pays',             icon: Globe2,          section: 'Operations', adminOnly: false },
   { to: '/warehouses',    label: 'Entrepôts',        icon: Warehouse,       section: 'Operations', adminOnly: false },
   { to: '/lots',          label: 'Lots',             icon: Package,         section: 'Operations', adminOnly: false },
+  { to: '/expeditions',   label: 'Expéditions',      icon: Truck,           section: 'Operations', adminOnly: false },
+  { to: '/clients',       label: 'Clients',           icon: Users,           section: 'Operations', adminOnly: false },
   { to: '/iot',           label: 'Surveillance IoT', icon: Activity,        section: 'Operations', adminOnly: false },
   { to: '/alerts',        label: 'Alertes',          icon: Bell,            section: 'Operations', adminOnly: false },
   { to: '/analytics',     label: 'Analytique',       icon: BarChart3,       section: 'Operations', adminOnly: false },

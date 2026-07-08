@@ -54,7 +54,7 @@ const TITLES: Record<SectionKey, { title: string; subtitle: string }> = {
 function Toast({ msg, onClose }: { msg: string; onClose: () => void }) {
   React.useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t) }, [onClose])
   return (
-    <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999, background:'#1a2e1a', color:'#fff',
+    <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999, background:'#4a2810', color:'#fff',
       padding:'10px 16px', borderRadius:10, fontSize:13, display:'flex', alignItems:'center', gap:10,
       boxShadow:'0 4px 20px rgba(0,0,0,.2)' }}>
       <Check size={14} /> {msg}
@@ -85,13 +85,13 @@ const IS: React.CSSProperties = { padding:'8px 10px', borderRadius:7, border:'0.
 function TI(props: React.InputHTMLAttributes<HTMLInputElement>) { return <input {...props} style={{ ...IS, ...props.style }} /> }
 function TS({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) { return <select {...props} style={{ ...IS, ...props.style }}>{children}</select> }
 function PBtn({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
-  return <button onClick={onClick} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:7, fontSize:12, cursor:'pointer', fontFamily:'inherit', border:'0.5px solid #1a2e1a', background:'#1a2e1a', color:'#fff', fontWeight:500 }}>{children}</button>
+  return <button onClick={onClick} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:7, fontSize:12, cursor:'pointer', fontFamily:'inherit', border:'0.5px solid #4a2810', background:'#4a2810', color:'#fff', fontWeight:500 }}>{children}</button>
 }
 function GBtn({ children, onClick, danger }: { children: React.ReactNode; onClick?: () => void; danger?: boolean }) {
   return <button onClick={onClick} style={{ display:'flex', alignItems:'center', gap:6, padding:'7px 14px', borderRadius:7, fontSize:12, cursor:'pointer', fontFamily:'inherit', border: danger ? '0.5px solid #F09595' : '0.5px solid #d0ccc5', background: danger ? '#FCEBEB' : '#fff', color: danger ? '#A32D2D' : '#1c1a17' }}>{children}</button>
 }
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
-  return <button role="switch" aria-checked={checked} onClick={() => onChange(!checked)} style={{ width:38, height:22, borderRadius:999, background: checked ? '#1a2e1a' : '#e0ddd7', border:'none', cursor:'pointer', position:'relative', transition:'background .15s', flexShrink:0 }}>
+  return <button role="switch" aria-checked={checked} onClick={() => onChange(!checked)} style={{ width:38, height:22, borderRadius:999, background: checked ? '#4a2810' : '#e0ddd7', border:'none', cursor:'pointer', position:'relative', transition:'background .15s', flexShrink:0 }}>
     <span style={{ position:'absolute', top:2, left: checked ? 18 : 2, width:18, height:18, borderRadius:'50%', background:'#fff', transition:'left .15s', boxShadow:'0 1px 2px rgba(0,0,0,.2)' }} />
   </button>
 }
@@ -312,13 +312,13 @@ function ThemeSection({ onToast }: { onToast: (m: string) => void }) {
         ].map(o => (
           <button key={o.value} onClick={() => apply(o.value)} style={{
             display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:14, borderRadius:12, cursor:'pointer', fontFamily:'inherit',
-            border: theme === o.value ? '2px solid #1a2e1a' : '1px solid #e0ddd7',
+            border: theme === o.value ? '2px solid #4a2810' : '1px solid #e0ddd7',
             background: theme === o.value ? '#f4f7f1' : '#fff', minWidth:100, transition:'all .15s',
           }}>
             <div style={{ width:56, height:40, borderRadius:8, background:o.bg, display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
               {o.icon}
               {theme === o.value && (
-                <span style={{ position:'absolute', top:-6, right:-6, background:'#1a2e1a', borderRadius:'50%', width:16, height:16, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <span style={{ position:'absolute', top:-6, right:-6, background:'#4a2810', borderRadius:'50%', width:16, height:16, display:'flex', alignItems:'center', justifyContent:'center' }}>
                   <Check size={10} color="#fff" />
                 </span>
               )}
@@ -405,7 +405,7 @@ export default function SettingsPage() {
               return (
                 <button key={item.key} onClick={() => setActive(item.key)} style={{
                   display:'flex', alignItems:'center', gap:8, padding:'7px 10px', borderRadius:7, fontSize:12, cursor:'pointer',
-                  color: isActive ? '#fff' : '#7a766f', border:'none', background: isActive ? '#1a2e1a' : 'transparent',
+                  color: isActive ? '#fff' : '#7a766f', border:'none', background: isActive ? '#4a2810' : 'transparent',
                   fontFamily:'inherit', width:'100%', textAlign:'left', transition:'all .12s',
                 }}
                   onMouseEnter={e => { if (!isActive) { e.currentTarget.style.background='#e8e4dc'; e.currentTarget.style.color='#1c1a17' } }}

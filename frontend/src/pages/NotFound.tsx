@@ -45,7 +45,7 @@ export default function NotFoundPage({ onGoDashboard, onGoBack }: NotFoundPagePr
           0% { opacity: 0; transform: scale(.9); }
           100% { opacity: 1; transform: scale(1); }
         }
-        .fk-404-btn:hover { background: #0f2010 !important; }
+        .fk-404-btn:hover { background: #3d1f0f !important; }
         .fk-404-ghost:hover { background: #ece8e1 !important; }
       `}</style>
 
@@ -209,8 +209,8 @@ export default function NotFoundPage({ onGoDashboard, onGoBack }: NotFoundPagePr
               gap: 6,
               padding: "9px 18px",
               borderRadius: 8,
-              border: "0.5px solid #1a2e1a",
-              background: "#1a2e1a",
+              border: "0.5px solid #4a2810",
+              background: "#4a2810",
               color: "#fff",
               fontSize: 13,
               fontWeight: 500,

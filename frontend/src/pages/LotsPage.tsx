@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { Plus, RefreshCw, Eye, Pencil, Trash2, PackageCheck, Undo2 } from 'lucide-react'
-import { getCountryLots, getLotsHistory, deleteLot, shipLot, unshipLot } from '../services/api'
+import { Plus, RefreshCw, Eye, Pencil, Trash2, PackageCheck, Truck } from 'lucide-react'
+import { getCountryLots, deleteLot } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import type { Lot } from '../types'
 import NewLotModal from '../components/NewLotModal'
 import LotEditModal from '../components/LotEditModal'
+import ExpeditionModal from '../components/ExpeditionModal'
 
 const COUNTRIES = [
   { code: 'BR', label: '🇧🇷 Brésil'   },
@@ -14,7 +15,7 @@ const COUNTRIES = [
 ]
 
 const STATUS_BADGE: Record<string, string> = {
-  compliant: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  compliant: 'bg-[#fdf6ee] text-[#7a4528] border-[#d4b896]',
   alert:     'bg-amber-50  text-amber-700  border-amber-200',
   expired:   'bg-red-50    text-red-700    border-red-200',
   shipped:   'bg-blue-50   text-blue-700   border-blue-200',
@@ -27,41 +28,43 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 function LotRow({
-  lot, onView, onEdit, onDelete, onShip, onUnship, isSiege, isHistory,
+  lot, selected, onToggleSelect, onView, onEdit, onDelete, onShip,
 }: {
   lot: Lot
+  selected: boolean
+  onToggleSelect: () => void
   onView: () => void
   onEdit: () => void
   onDelete: () => void
   onShip?: () => void
-  onUnship?: () => void
-  isSiege: boolean
-  isHistory: boolean
 }) {
   const age = lot.storage_date
     ? Math.floor((Date.now() - new Date(lot.storage_date).getTime()) / 86400000)
     : null
-  const rowBg = lot.status === 'expired'
+  const rowBg = selected
+    ? 'bg-[#fdf6ee]/60 dark:bg-[#4a2810]/10'
+    : lot.status === 'expired'
     ? 'bg-red-50/30 dark:bg-red-950/10'
     : lot.status === 'alert'
     ? 'bg-amber-50/30 dark:bg-amber-950/10'
-    : lot.status === 'shipped'
-    ? 'bg-blue-50/20 dark:bg-blue-950/10'
     : ''
 
   return (
     <tr className={`border-b border-stone-100 dark:border-white/5 hover:bg-stone-50 dark:hover:bg-white/3 transition-colors ${rowBg}`}>
+      <td className="px-3 py-3 w-8">
+        <input
+          type="checkbox"
+          checked={selected}
+          onChange={onToggleSelect}
+          className="h-3.5 w-3.5 rounded border-stone-300 dark:border-white/20 accent-[#7a4528] cursor-pointer"
+        />
+      </td>
       <td className="px-4 py-3 font-mono text-sm font-semibold text-stone-800 dark:text-stone-100">{lot.id}</td>
       <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{lot.exploitation_id}</td>
       <td className="px-4 py-3 text-sm text-stone-600 dark:text-stone-300">{lot.warehouse_id}</td>
       <td className="px-4 py-3 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
         {lot.storage_date ? new Date(lot.storage_date).toLocaleDateString('fr-FR') : '—'}
       </td>
-      {isHistory && (
-        <td className="px-4 py-3 text-sm text-stone-500 dark:text-stone-400 whitespace-nowrap">
-          {lot.shipped_at ? new Date(lot.shipped_at).toLocaleDateString('fr-FR') : '—'}
-        </td>
-      )}
       <td className="px-4 py-3 text-sm text-stone-500 dark:text-stone-400">
         {age !== null ? `${age} j` : '—'}
       </td>
@@ -81,36 +84,24 @@ function LotRow({
                        hover:bg-stone-100 dark:hover:bg-white/8 transition-colors">
             <Eye size={13} />
           </button>
-          {!isHistory && (
-            <>
-              <button onClick={onEdit} title="Modifier"
-                className="h-7 w-7 flex items-center justify-center rounded-lg
-                           text-stone-400 hover:text-amber-600
-                           hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors">
-                <Pencil size={13} />
-              </button>
-              <button onClick={onDelete} title="Supprimer"
-                className="h-7 w-7 flex items-center justify-center rounded-lg
-                           text-stone-400 hover:text-red-600
-                           hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
-                <Trash2 size={13} />
-              </button>
-              {isSiege && lot.status !== 'shipped' && (
-                <button onClick={onShip} title="Expédier"
-                  className="h-7 w-7 flex items-center justify-center rounded-lg
-                             text-stone-400 hover:text-blue-600
-                             hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors">
-                  <PackageCheck size={13} />
-                </button>
-              )}
-            </>
-          )}
-          {isHistory && isSiege && (
-            <button onClick={onUnship} title="Annuler l'expédition"
+          <button onClick={onEdit} title="Modifier"
+            className="h-7 w-7 flex items-center justify-center rounded-lg
+                       text-stone-400 hover:text-amber-600
+                       hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors">
+            <Pencil size={13} />
+          </button>
+          <button onClick={onDelete} title="Supprimer"
+            className="h-7 w-7 flex items-center justify-center rounded-lg
+                       text-stone-400 hover:text-red-600
+                       hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors">
+            <Trash2 size={13} />
+          </button>
+          {lot.status !== 'shipped' && (
+            <button onClick={onShip} title="Expédier"
               className="h-7 w-7 flex items-center justify-center rounded-lg
-                         text-stone-400 hover:text-amber-600
-                         hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-colors">
-              <Undo2 size={13} />
+                         text-stone-400 hover:text-[#7a4528]
+                         hover:bg-[#fdf6ee] dark:hover:bg-[#4a2810]/30 transition-colors">
+              <PackageCheck size={13} />
             </button>
           )}
         </div>
@@ -127,17 +118,17 @@ export default function LotsPage() {
   const lockedCountry = isSiege ? null : (user?.country_code ?? 'BR')
   const initialCountry = lockedCountry ?? searchParams.get('country') ?? 'BR'
 
-  const [country,    setCountry]    = useState(initialCountry)
-  const [lots,       setLots]       = useState<Lot[]>([])
-  const [history,    setHistory]    = useState<Lot[]>([])
-  const [tab,        setTab]        = useState<'active' | 'history'>('active')
-  const [loading,    setLoading]    = useState(true)
-  const [error,      setError]      = useState<string | null>(null)
-  const [showCreate, setShowCreate] = useState(false)
-  const [editTarget, setEditTarget] = useState<Lot | null>(null)
+  const [country,      setCountry]      = useState(initialCountry)
+  const [lots,         setLots]         = useState<Lot[]>([])
+  const [loading,      setLoading]      = useState(true)
+  const [error,        setError]        = useState<string | null>(null)
+  const [showCreate,   setShowCreate]   = useState(false)
+  const [editTarget,   setEditTarget]   = useState<Lot | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Lot | null>(null)
-  const [deleting,   setDeleting]   = useState(false)
-  const [shippingId, setShippingId] = useState<string | null>(null)
+  const [deleting,     setDeleting]     = useState(false)
+
+  const [selectedIds,    setSelectedIds]    = useState<Set<string>>(new Set())
+  const [expeditionLots, setExpeditionLots] = useState<Lot[] | null>(null)
 
   const [query,    setQuery]    = useState('')
   const [statusF,  setStatusF]  = useState('')
@@ -149,20 +140,14 @@ export default function LotsPage() {
   const fetchLots = useCallback(() => {
     setLoading(true); setError(null)
     getCountryLots(country)
-      .then(data => setLots(data))
+      .then((data: Lot[]) => { setLots(data); setSelectedIds(new Set()) })
       .catch(() => setError('Impossible de charger les lots'))
       .finally(() => setLoading(false))
   }, [country])
 
-  const fetchHistory = useCallback(() => {
-    if (!isSiege) return
-    getLotsHistory(country)
-      .then(data => setHistory(data))
-      .catch(() => {})
-  }, [country, isSiege])
-
-  useEffect(() => { fetchLots(); fetchHistory() }, [fetchLots, fetchHistory])
+  useEffect(() => { fetchLots() }, [fetchLots])
   useEffect(() => { setSearchParams({ country }) }, [country, setSearchParams])
+  useEffect(() => { setSelectedIds(new Set()) }, [country])
 
   const handleDelete = async () => {
     if (!deleteTarget) return
@@ -178,33 +163,9 @@ export default function LotsPage() {
     }
   }
 
-  const handleShip = async (lotId: string) => {
-    if (!confirm(`Confirmer l'expédition du lot ${lotId} ?`)) return
-    setShippingId(lotId)
-    try {
-      await shipLot(country, lotId)
-      fetchLots(); fetchHistory()
-    } catch (err: any) {
-      alert(err?.response?.data?.detail ?? 'Erreur lors de l\'expédition')
-    } finally {
-      setShippingId(null)
-    }
-  }
-
-  const handleUnship = async (lotId: string) => {
-    if (!confirm(`Annuler l'expédition du lot ${lotId} ?`)) return
-    setShippingId(lotId)
-    try {
-      await unshipLot(country, lotId)
-      fetchLots(); fetchHistory()
-    } catch (err: any) {
-      alert(err?.response?.data?.detail ?? 'Erreur lors de l\'annulation')
-    } finally {
-      setShippingId(null)
-    }
-  }
-
+  // Lots actifs = tout sauf expédiés
   const activeLots = lots.filter(l => {
+    if (l.status === 'shipped') return false
     if (query    && !l.id.toLowerCase().includes(query.toLowerCase())) return false
     if (statusF  && l.status !== statusF) return false
     if (dateFrom && new Date(l.storage_date) < new Date(dateFrom)) return false
@@ -212,15 +173,27 @@ export default function LotsPage() {
     return true
   })
 
+  const nonShipped = lots.filter(l => l.status !== 'shipped')
+
   const stats = {
-    total:     lots.length,
-    compliant: lots.filter(l => l.status === 'compliant').length,
-    alert:     lots.filter(l => l.status === 'alert').length,
-    expired:   lots.filter(l => l.status === 'expired').length,
-    shipped:   history.length,
+    total:     nonShipped.length,
+    compliant: nonShipped.filter(l => l.status === 'compliant').length,
+    alert:     nonShipped.filter(l => l.status === 'alert').length,
+    expired:   nonShipped.filter(l => l.status === 'expired').length,
+    shipped:   lots.filter(l => l.status === 'shipped').length,
   }
 
-  const displayList = tab === 'active' ? activeLots : history
+  const shippableSelected = activeLots.filter(l => selectedIds.has(l.id))
+  const allVisibleSelected = activeLots.length > 0 && activeLots.every(l => selectedIds.has(l.id))
+  const someSelected = selectedIds.size > 0
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s })
+
+  const toggleSelectAll = () => {
+    if (allVisibleSelected) setSelectedIds(new Set())
+    else setSelectedIds(new Set(activeLots.map(l => l.id)))
+  }
 
   return (
     <div className="space-y-5">
@@ -238,7 +211,7 @@ export default function LotsPage() {
                 <button key={c.code} onClick={() => setCountry(c.code)}
                   className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-colors ${
                     country === c.code
-                      ? 'bg-[#1a2e1a] text-white shadow-sm'
+                      ? 'bg-[#4a2810] text-white shadow-sm'
                       : 'text-stone-500 dark:text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
                   }`}>
                   {c.label}
@@ -250,7 +223,7 @@ export default function LotsPage() {
               {COUNTRIES.find(c => c.code === country)?.label ?? country}
             </span>
           )}
-          <button onClick={() => { fetchLots(); fetchHistory() }}
+          <button onClick={fetchLots}
             className="h-9 w-9 flex items-center justify-center rounded-xl border border-stone-200 dark:border-white/10
                        bg-white dark:bg-[#1c1a17] text-stone-600 dark:text-stone-300
                        hover:bg-stone-50 dark:hover:bg-white/5 transition-colors">
@@ -259,7 +232,7 @@ export default function LotsPage() {
           {canCreate && (
             <button onClick={() => setShowCreate(true)}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl
-                         bg-[#1a2e1a] hover:bg-[#0f2010] text-white text-sm font-medium transition-colors">
+                         bg-[#4a2810] hover:bg-[#3d1f0f] text-white text-sm font-medium transition-colors">
               <Plus size={15} /> Nouveau lot
             </button>
           )}
@@ -270,7 +243,7 @@ export default function LotsPage() {
       <div className="grid grid-cols-5 gap-3">
         {[
           { label: 'Total',      value: stats.total,     color: 'text-stone-900 dark:text-stone-100' },
-          { label: 'Conformes',  value: stats.compliant, color: 'text-emerald-600' },
+          { label: 'Conformes',  value: stats.compliant, color: 'text-[#7a4528]' },
           { label: 'En alerte',  value: stats.alert,     color: 'text-amber-600' },
           { label: 'Expirés',    value: stats.expired,   color: 'text-red-600' },
           { label: 'Expédiés',   value: stats.shipped,   color: 'text-blue-600' },
@@ -282,63 +255,35 @@ export default function LotsPage() {
         ))}
       </div>
 
-      {/* Onglets actifs / historique */}
-      {isSiege && (
-        <div className="flex gap-1 border-b border-stone-200 dark:border-white/10">
-          <button
-            onClick={() => setTab('active')}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              tab === 'active'
-                ? 'border-[#1a2e1a] text-[#1a2e1a] dark:border-emerald-400 dark:text-emerald-400'
-                : 'border-transparent text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
-            }`}
-          >
-            Lots actifs ({lots.length})
+      {/* Filtres */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <input value={query} onChange={e => setQuery(e.target.value)}
+          placeholder="Rechercher par ID…"
+          className="px-3 py-2 border border-stone-200 dark:border-white/10 rounded-lg text-sm
+                     bg-white dark:bg-[#1c1a17] text-stone-800 dark:text-stone-200
+                     focus:outline-none focus:ring-2 focus:ring-stone-300 dark:focus:ring-white/20" />
+        <select value={statusF} onChange={e => setStatusF(e.target.value)}
+          className="px-3 py-2 border border-stone-200 dark:border-white/10 rounded-lg text-sm
+                     bg-white dark:bg-[#1c1a17] text-stone-800 dark:text-stone-200">
+          <option value="">Tous statuts</option>
+          <option value="compliant">Conforme</option>
+          <option value="alert">Alerte</option>
+          <option value="expired">Expiré</option>
+        </select>
+        <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+          className="px-3 py-2 border border-stone-200 dark:border-white/10 rounded-lg text-sm
+                     bg-white dark:bg-[#1c1a17] text-stone-800 dark:text-stone-200" />
+        <span className="text-stone-400 text-sm">→</span>
+        <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+          className="px-3 py-2 border border-stone-200 dark:border-white/10 rounded-lg text-sm
+                     bg-white dark:bg-[#1c1a17] text-stone-800 dark:text-stone-200" />
+        {(query || statusF || dateFrom || dateTo) && (
+          <button onClick={() => { setQuery(''); setStatusF(''); setDateFrom(''); setDateTo('') }}
+            className="text-xs text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 underline transition-colors">
+            Réinitialiser
           </button>
-          <button
-            onClick={() => setTab('history')}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              tab === 'history'
-                ? 'border-blue-600 text-blue-600'
-                : 'border-transparent text-stone-400 hover:text-stone-700 dark:hover:text-stone-200'
-            }`}
-          >
-            📦 Expéditions ({history.length})
-          </button>
-        </div>
-      )}
-
-      {/* Filtres — seulement sur onglet actifs */}
-      {tab === 'active' && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <input value={query} onChange={e => setQuery(e.target.value)}
-            placeholder="Rechercher par ID…"
-            className="px-3 py-2 border border-stone-200 dark:border-white/10 rounded-lg text-sm
-                       bg-white dark:bg-[#1c1a17] text-stone-800 dark:text-stone-200
-                       focus:outline-none focus:ring-2 focus:ring-stone-300 dark:focus:ring-white/20" />
-          <select value={statusF} onChange={e => setStatusF(e.target.value)}
-            className="px-3 py-2 border border-stone-200 dark:border-white/10 rounded-lg text-sm
-                       bg-white dark:bg-[#1c1a17] text-stone-800 dark:text-stone-200">
-            <option value="">Tous statuts</option>
-            <option value="compliant">Conforme</option>
-            <option value="alert">Alerte</option>
-            <option value="expired">Expiré</option>
-          </select>
-          <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-            className="px-3 py-2 border border-stone-200 dark:border-white/10 rounded-lg text-sm
-                       bg-white dark:bg-[#1c1a17] text-stone-800 dark:text-stone-200" />
-          <span className="text-stone-400 text-sm">→</span>
-          <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-            className="px-3 py-2 border border-stone-200 dark:border-white/10 rounded-lg text-sm
-                       bg-white dark:bg-[#1c1a17] text-stone-800 dark:text-stone-200" />
-          {(query || statusF || dateFrom || dateTo) && (
-            <button onClick={() => { setQuery(''); setStatusF(''); setDateFrom(''); setDateTo('') }}
-              className="text-xs text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 underline transition-colors">
-              Réinitialiser
-            </button>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Erreur */}
       {error && (
@@ -355,11 +300,19 @@ export default function LotsPage() {
         <table className="min-w-full text-left">
           <thead>
             <tr className="border-b border-stone-100 dark:border-white/10 text-xs text-stone-400 dark:text-stone-500 uppercase tracking-wide">
+              <th className="px-3 py-3 w-8">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={toggleSelectAll}
+                  disabled={activeLots.length === 0}
+                  className="h-3.5 w-3.5 rounded border-stone-300 dark:border-white/20 accent-[#7a4528] cursor-pointer disabled:opacity-40"
+                />
+              </th>
               <th className="px-4 py-3 font-semibold">ID Lot</th>
               <th className="px-4 py-3 font-semibold">Exploitation</th>
               <th className="px-4 py-3 font-semibold">Entrepôt</th>
               <th className="px-4 py-3 font-semibold">Date stockage</th>
-              {tab === 'history' && <th className="px-4 py-3 font-semibold">Date expédition</th>}
               <th className="px-4 py-3 font-semibold">Âge</th>
               <th className="px-4 py-3 font-semibold">Statut</th>
               <th className="px-4 py-3 font-semibold">Notes qualité</th>
@@ -370,36 +323,33 @@ export default function LotsPage() {
             {loading
               ? Array.from({ length: 6 }).map((_, i) => (
                   <tr key={i} className="border-b border-stone-50 dark:border-white/5">
-                    {Array.from({ length: 8 }).map((_, j) => (
+                    {Array.from({ length: 9 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 bg-stone-100 dark:bg-white/5 rounded animate-pulse" />
                       </td>
                     ))}
                   </tr>
                 ))
-              : displayList.length === 0
+              : activeLots.length === 0
               ? (
                 <tr>
                   <td colSpan={9} className="px-4 py-12 text-center text-sm text-stone-400 dark:text-stone-500">
-                    {tab === 'history'
-                      ? 'Aucun lot expédié pour ce pays.'
-                      : lots.length === 0
-                      ? 'Aucun lot pour ce pays. Créez le premier lot.'
-                      : 'Aucun lot ne correspond aux filtres sélectionnés.'}
+                    {nonShipped.length === 0
+                      ? 'Aucun lot actif pour ce pays.'
+                      : 'Aucun lot ne correspond aux filtres.'}
                   </td>
                 </tr>
               )
-              : displayList.map(l => (
+              : activeLots.map(l => (
                   <LotRow
                     key={l.id}
                     lot={l}
-                    isSiege={isSiege}
-                    isHistory={tab === 'history'}
+                    selected={selectedIds.has(l.id)}
+                    onToggleSelect={() => toggleSelect(l.id)}
                     onView={() => navigate(`/lots/${country}/${encodeURIComponent(l.id)}`)}
                     onEdit={() => setEditTarget(l)}
                     onDelete={() => setDeleteTarget(l)}
-                    onShip={() => handleShip(l.id)}
-                    onUnship={() => handleUnship(l.id)}
+                    onShip={() => setExpeditionLots([l])}
                   />
                 ))
             }
@@ -407,21 +357,45 @@ export default function LotsPage() {
         </table>
       </div>
 
-      {!loading && displayList.length > 0 && (
+      {!loading && activeLots.length > 0 && (
         <p className="text-xs text-stone-400 dark:text-stone-500 text-right">
-          {displayList.length} lot{displayList.length > 1 ? 's' : ''} affiché{displayList.length > 1 ? 's' : ''}
-          {tab === 'active' && displayList.length !== lots.length ? ` / ${lots.length} au total` : ''}
+          {activeLots.length} lot{activeLots.length > 1 ? 's' : ''} affiché{activeLots.length > 1 ? 's' : ''}
+          {activeLots.length !== nonShipped.length ? ` / ${nonShipped.length} au total` : ''}
         </p>
       )}
 
-      {/* Modal création */}
+      {/* Barre flottante sélection */}
+      {someSelected && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40
+                        flex items-center gap-3 px-5 py-3 rounded-2xl
+                        bg-[#4a2810] shadow-2xl shadow-black/30 text-white
+                        border border-white/10">
+          <span className="text-sm font-medium">
+            {selectedIds.size} lot{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}
+          </span>
+          {shippableSelected.length > 0 && (
+            <button onClick={() => setExpeditionLots(shippableSelected)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl
+                         bg-white/15 hover:bg-white/25 text-white text-sm font-medium transition-colors">
+              <Truck size={13} />
+              Expédier ({shippableSelected.length})
+            </button>
+          )}
+          <button onClick={() => setSelectedIds(new Set())}
+            className="h-7 w-7 flex items-center justify-center rounded-lg
+                       text-white/50 hover:text-white hover:bg-white/10 transition-colors text-lg leading-none">
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* Modals */}
       {showCreate && (
         <NewLotModal countryCode={country}
           onClose={() => setShowCreate(false)}
           onCreated={() => { setShowCreate(false); fetchLots() }} />
       )}
 
-      {/* Modal édition */}
       {editTarget && (
         <LotEditModal
           lot={editTarget}
@@ -430,7 +404,15 @@ export default function LotsPage() {
           onUpdated={() => { setEditTarget(null); fetchLots() }} />
       )}
 
-      {/* Confirmation suppression */}
+      {expeditionLots && (
+        <ExpeditionModal
+          lots={expeditionLots}
+          countryCode={country}
+          onClose={() => setExpeditionLots(null)}
+          onCreated={() => { setExpeditionLots(null); setSelectedIds(new Set()); fetchLots() }}
+        />
+      )}
+
       {deleteTarget && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
              onClick={() => setDeleteTarget(null)}>

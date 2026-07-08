@@ -27,3 +27,5 @@ Thumbs.db
 .vscode/
 .idea/
 micropython-esp8266.bin
+*.db
+test_*.db

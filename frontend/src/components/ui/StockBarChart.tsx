@@ -9,7 +9,7 @@ type Props = {
 }
 
 const COLORS = {
-  w1: '#1a2e1a',
+  w1: '#4a2810',
   w2: '#7c3b1e',
   w3: '#B4A06B',
 }

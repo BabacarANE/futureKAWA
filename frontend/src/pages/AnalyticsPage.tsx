@@ -63,7 +63,7 @@ function exportToPdf(data: AnalyticsData | null) {
     `<tr><td>${c.label}</td><td>${data?.lotsByCountry[c.code] ?? 0}</td><td>${data?.alertsByCountry[c.code] ?? 0}</td></tr>`
   ).join('')
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>FutureKawa Analytics</title>
-  <style>body{font-family:sans-serif;padding:2rem}h1{color:#1a2e1a}table{border-collapse:collapse;width:100%;margin-bottom:1rem}
+  <style>body{font-family:sans-serif;padding:2rem}h1{color:#4a2810}table{border-collapse:collapse;width:100%;margin-bottom:1rem}
   th,td{border:1px solid #e0ddd7;padding:8px 12px}th{background:#f4f2ef}</style></head>
   <body><h1>FutureKawa — Rapport Analytics</h1><p>Généré le ${now}</p>
   <h2>KPIs globaux</h2>
@@ -167,7 +167,7 @@ export default function AnalyticsPage() {
           <button onClick={() => { setExporting('excel'); exportToExcel(data); setTimeout(() => setExporting(null), 600) }}
             disabled={exporting === 'excel'}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg
-                       bg-[#1a2e1a] text-white hover:bg-[#0f2010] transition disabled:opacity-60">
+                       bg-[#4a2810] text-white hover:bg-[#3d1f0f] transition disabled:opacity-60">
             <FileSpreadsheet size={13} />
             {exporting === 'excel' ? 'Export…' : 'Excel'}
           </button>
@@ -192,7 +192,7 @@ export default function AnalyticsPage() {
           <button key={r.value} onClick={() => setRange(r.value)}
             className={`px-3 py-1 rounded-full text-xs border transition ${
               range === r.value
-                ? 'bg-[#1a2e1a] text-white border-[#1a2e1a]'
+                ? 'bg-[#4a2810] text-white border-[#4a2810]'
                 : 'bg-white dark:bg-[#1c1a17] text-gray-500 dark:text-stone-400 border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5'
             }`}>
             {r.label}
