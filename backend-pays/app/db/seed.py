@@ -1,8 +1,5 @@
 from app.db.database import SessionLocal, engine, Base
 from app.models.user import User
-from app.models.country import Country
-from app.models.exploitation import Exploitation
-from app.models.warehouse import Warehouse
 from app.api.auth import hash_password
 import os
 
@@ -46,7 +43,7 @@ def seed():
         db.commit()
         print(f"Seed done — users created for {pays}")
         print(f"  → admin.{pays}@futurekawa.com / futurekawa2024")
-        print(f"  → admin.siege@futurekawa.com / futurekawa2024")
+        print("  → admin.siege@futurekawa.com / futurekawa2024")
 
     finally:
         db.close()

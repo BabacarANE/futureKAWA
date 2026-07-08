@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 from app.db.database import get_db
-from app.models.alert import Alert, AlertUser
+from app.models.alert import Alert
 from app.models.user import User
 from app.api.auth import get_current_user
 from app.alerting.email import send_alert_email

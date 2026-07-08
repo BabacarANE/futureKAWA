@@ -3,7 +3,7 @@ backend-pays/app/api/warehouses.py
 Routes CRUD entrepôts + lecture exploitations pour chaque backend pays.
 Ce fichier est importé dans main.py avec : from app.api.warehouses import router as warehouses_router
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional
